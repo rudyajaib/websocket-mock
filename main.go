@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"math/rand"
@@ -384,17 +385,23 @@ func generateOrderBook(asset, quote string, basePrice float64) OrderBookUpdate {
 }
 
 func main() {
+	hostFlag := flag.String("host", "localhost", "Host address to bind to")
+	portFlag := flag.String("port", "8080", "Port to bind to")
+
+	flag.Parse()
+
+	addr := fmt.Sprintf("%s:%s", *hostFlag, *portFlag)
+
 	rand.Seed(time.Now().UnixNano())
 
 	http.HandleFunc("/ws/v3/coin-data/price", handlePriceSocket)
 	http.HandleFunc("/ws/v3/coin-data/order-book", handleOrderBookSocket)
 
-	port := ":8080"
-	log.Printf("Starting WebSocket mock server on ws://localhost%s", port)
-	log.Printf("- Price Socket: ws://localhost%s/ws/v3/coin-data/price", port)
-	log.Printf("- Order Book Socket: ws://localhost%s/ws/v3/coin-data/order-book", port)
+	log.Printf("Starting WebSocket mock server on %s", addr)
+	log.Printf("- Price Socket: ws://%s/ws/v3/coin-data/price", addr)
+	log.Printf("- Order Book Socket: ws://%s/ws/v3/coin-data/order-book", addr)
 
-	if err := http.ListenAndServe(port, nil); err != nil {
+	if err := http.ListenAndServe(addr, nil); err != nil {
 		log.Fatal("ListenAndServe:", err)
 	}
 }
