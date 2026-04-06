@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"log"
 	"math/rand"
@@ -20,7 +19,6 @@ import (
 
 // --- Global Server State ---
 
-// ClientConn encapsulates a single connection and its thread-safe write lock
 type ClientConn struct {
 	conn    *websocket.Conn
 	cancel  context.CancelFunc
@@ -30,7 +28,7 @@ type ClientConn struct {
 type MockServer struct {
 	clients   map[*ClientConn]bool
 	clientsMu sync.Mutex
-	tickMs    int64 // Global tick rate in milliseconds
+	tickMs    int64
 }
 
 func (s *MockServer) AddClient(c *ClientConn) {
@@ -45,12 +43,11 @@ func (s *MockServer) RemoveClient(c *ClientConn) {
 	delete(s.clients, c)
 }
 
-// CloseAll abruptly closes all OTHER connections
 func (s *MockServer) CloseAll(sender *ClientConn) {
 	s.clientsMu.Lock()
 	clientsCopy := make([]*ClientConn, 0, len(s.clients))
 	for c := range s.clients {
-		if c != sender { // Skip the sender
+		if c != sender {
 			clientsCopy = append(clientsCopy, c)
 		}
 	}
@@ -58,17 +55,16 @@ func (s *MockServer) CloseAll(sender *ClientConn) {
 
 	log.Printf("Abruptly closing %d OTHER active connection(s)...", len(clientsCopy))
 	for _, c := range clientsCopy {
-		c.cancel()     // Signal goroutines to stop
-		c.conn.Close() // Drop the TCP socket immediately
+		c.cancel()
+		c.conn.Close()
 	}
 }
 
-// BroadcastPeerClosed sends a normal close frame gracefully to ALL OTHER clients
 func (s *MockServer) BroadcastPeerClosed(sender *ClientConn) {
 	s.clientsMu.Lock()
 	clientsCopy := make([]*ClientConn, 0, len(s.clients))
 	for c := range s.clients {
-		if c != sender { // Skip the sender
+		if c != sender {
 			clientsCopy = append(clientsCopy, c)
 		}
 	}
@@ -78,13 +74,10 @@ func (s *MockServer) BroadcastPeerClosed(sender *ClientConn) {
 	closeMsg := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "Server requested graceful close")
 
 	for _, c := range clientsCopy {
-		// Run each disconnect in a goroutine so we don't block
 		go func(client *ClientConn) {
 			client.writeMu.Lock()
 			client.conn.WriteMessage(websocket.CloseMessage, closeMsg)
 			client.writeMu.Unlock()
-
-			// Give Starscream on iOS 100ms to process the frame before dropping TCP
 			time.Sleep(100 * time.Millisecond)
 			client.cancel()
 			client.conn.Close()
@@ -94,12 +87,12 @@ func (s *MockServer) BroadcastPeerClosed(sender *ClientConn) {
 
 var server = &MockServer{
 	clients: make(map[*ClientConn]bool),
-	tickMs:  1000, // Default 1 second
+	tickMs:  1000,
 }
 
-// --- Data Structures ---
-
 var upgrader = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
+
+// --- Request Data Structures ---
 
 type ClientMessage struct {
 	AssetID            string `json:"asset_id"`
@@ -108,9 +101,9 @@ type ClientMessage struct {
 	StreamType         string `json:"stream_type"`
 	ID                 any    `json:"id"`
 	Source             string `json:"source"`
-	Rate               string `json:"rate"`                 // Global tick rate adjust
-	CloseAllConnection bool   `json:"close_all_connection"` // Global abrupt close
-	SimulatePeerClosed bool   `json:"simulate_peer_closed"` // Global graceful close broadcast
+	Rate               string `json:"rate"`
+	CloseAllConnection bool   `json:"close_all_connection"`
+	SimulatePeerClosed bool   `json:"simulate_peer_closed"`
 }
 
 type ConnectResponse struct {
@@ -126,8 +119,8 @@ type CloseAllResponse struct {
 	CloseAllConnection bool `json:"close_all_connection"`
 }
 
-// Price Models
-type PriceUpdate struct {
+// --- V3 Price Models ---
+type PriceUpdateV3 struct {
 	AssetID              string `json:"asset_id"`
 	QuoteCurrency        string `json:"quote_currency"`
 	Timestamp            int64  `json:"timestamp"`
@@ -137,35 +130,81 @@ type PriceUpdate struct {
 	MarkPriceLabel       string `json:"mark_price_label"`
 }
 
-// Order Book Models
-type OrderBookEntry struct {
+// --- V2 Price Models ---
+type PriceUpdateV2 struct {
+	AssetID              string  `json:"asset_id"`
+	QuoteCurrency        string  `json:"quote_currency"`
+	Timestamp            int64   `json:"timestamp"`
+	PriceLabel           string  `json:"price_label"`
+	Price                float64 `json:"price"`
+	PriceInIDRLabel      string  `json:"price_in_idr_label"`
+	PriceChangeLabel     string  `json:"price_change_label"`
+	PriceRateChangeLabel string  `json:"price_rate_change_label"`
+	StreamerReceivedAt   any     `json:"streamer_received_at"` // using any to cleanly send null
+	LPTimestamp          int64   `json:"lp_timestamp"`
+	P                    int     `json:"p"`
+	Co                   int     `json:"co"`
+	Pe                   int64   `json:"pe"`
+}
+
+// --- V3 Order Book Models ---
+type OrderBookEntryV3 struct {
 	PriceLabel    string  `json:"price_label"`
 	Quantity      float64 `json:"quantity"`
 	QuantityLabel string  `json:"quantity_label"`
 }
 
-type OrderBookUpdate struct {
-	AssetID          string           `json:"asset_id"`
-	QuoteCurrency    string           `json:"quote_currency"`
-	Timestamp        int64            `json:"timestamp"`
-	Asks             []OrderBookEntry `json:"asks"`
-	Bids             []OrderBookEntry `json:"bids"`
-	AskQtyPercentage string           `json:"ask_qty_percentage"`
-	BidQtyPercentage string           `json:"bid_qty_percentage"`
-	SumQty           string           `json:"sum_qty"`
+type OrderBookUpdateV3 struct {
+	AssetID          string             `json:"asset_id"`
+	QuoteCurrency    string             `json:"quote_currency"`
+	Timestamp        int64              `json:"timestamp"`
+	Asks             []OrderBookEntryV3 `json:"asks"`
+	Bids             []OrderBookEntryV3 `json:"bids"`
+	AskQtyPercentage string             `json:"ask_qty_percentage"`
+	BidQtyPercentage string             `json:"bid_qty_percentage"`
+	SumQty           string             `json:"sum_qty"`
+}
+
+// --- V2 Order Book Models ---
+type OrderBookEntryV2 struct {
+	QuantityLabel string  `json:"quantity_label"`
+	PriceLabel    string  `json:"price_label"`
+	Price         float64 `json:"price"`
+	Quantity      float64 `json:"quantity"`
+}
+
+type OrderBookUpdateV2 struct {
+	AssetID          string             `json:"asset_id"`
+	QuoteCurrency    string             `json:"quote_currency"`
+	Timestamp        int64              `json:"timestamp"`
+	Asks             []OrderBookEntryV2 `json:"asks"`
+	Bids             []OrderBookEntryV2 `json:"bids"`
+	AskQtyPercentage float64            `json:"ask_qty_percentage"`
+	BidQtyPercentage float64            `json:"bid_qty_percentage"`
+	SumQty           float64            `json:"sum_qty"`
+	P                int                `json:"p"`
+	Co               int                `json:"co"`
+	Pe               int64              `json:"pe"`
 }
 
 // --- Handlers ---
 
-func handlePriceSocket(w http.ResponseWriter, r *http.Request) {
-	serveSocket(w, r, "PRICE")
+func handlePriceSocketV3(w http.ResponseWriter, r *http.Request) {
+	serveSocket(w, r, "PRICE_V3")
 }
 
-func handleOrderBookSocket(w http.ResponseWriter, r *http.Request) {
-	serveSocket(w, r, "ORDER_BOOK")
+func handlePriceSocketV2(w http.ResponseWriter, r *http.Request) {
+	serveSocket(w, r, "PRICE_V2")
 }
 
-// serveSocket is the shared connection logic for both endpoints
+func handleOrderBookSocketV3(w http.ResponseWriter, r *http.Request) {
+	serveSocket(w, r, "ORDER_BOOK_V3")
+}
+
+func handleOrderBookSocketV2(w http.ResponseWriter, r *http.Request) {
+	serveSocket(w, r, "ORDER_BOOK_V2")
+}
+
 func serveSocket(w http.ResponseWriter, r *http.Request, endpointType string) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -174,8 +213,6 @@ func serveSocket(w http.ResponseWriter, r *http.Request, endpointType string) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-
-	// Create our thread-safe client connection state
 	client := &ClientConn{
 		conn:   conn,
 		cancel: cancel,
@@ -206,7 +243,9 @@ func serveSocket(w http.ResponseWriter, r *http.Request, endpointType string) {
 		timer := time.NewTimer(time.Duration(rate) * time.Millisecond)
 		defer timer.Stop()
 
-		basePrice := 1000000000.0 // 1 Billion Base
+		// Setting an appropriate base price depending on the stream type logic
+		basePriceV3 := 1175644449.0
+		basePriceV2 := 698.2924
 
 		for {
 			select {
@@ -226,22 +265,48 @@ func serveSocket(w http.ResponseWriter, r *http.Request, endpointType string) {
 						continue
 					}
 					asset, quote := parts[0], parts[1]
+					ts := time.Now().UnixNano() / int64(time.Millisecond)
 
-					if endpointType == "PRICE" {
-						basePrice += (rand.Float64() * 1000) - 500
-						update := PriceUpdate{
+					if endpointType == "PRICE_V3" {
+						basePriceV3 += (rand.Float64() * 1000) - 500
+						update := PriceUpdateV3{
 							AssetID:              asset,
 							QuoteCurrency:        quote,
-							Timestamp:            time.Now().UnixNano() / int64(time.Millisecond),
-							PriceLabel:           fmt.Sprintf("%.0f", basePrice),
+							Timestamp:            ts,
+							PriceLabel:           fmt.Sprintf("%.0f", basePriceV3),
 							PriceChangeLabel:     fmt.Sprintf("%.2f", (rand.Float64()*100)-50),
 							PriceRateChangeLabel: fmt.Sprintf("%.2f", (rand.Float64()*4)-2),
-							MarkPriceLabel:       fmt.Sprintf("%.0f", basePrice+((rand.Float64()*200)-100)),
+							MarkPriceLabel:       fmt.Sprintf("%.0f", basePriceV3+((rand.Float64()*200)-100)),
 						}
 						safeWriteJSON(update)
 
-					} else if endpointType == "ORDER_BOOK" {
-						safeWriteJSON(generateOrderBook(asset, quote, basePrice))
+					} else if endpointType == "PRICE_V2" {
+						basePriceV2 += (rand.Float64() * 10) - 5 // Smaller increments to showcase fractions
+						priceChange := (rand.Float64() * 100) - 50
+						priceRateChange := (rand.Float64() * 20) - 10
+
+						update := PriceUpdateV2{
+							AssetID:              asset,
+							QuoteCurrency:        quote,
+							Timestamp:            ts,
+							PriceLabel:           formatDecimalComma(basePriceV2, 4),
+							Price:                basePriceV2,
+							PriceInIDRLabel:      formatDecimalComma(basePriceV2, 4),
+							PriceChangeLabel:     formatDecimalComma(priceChange, 6),
+							PriceRateChangeLabel: formatDecimalComma(priceRateChange, 2),
+							StreamerReceivedAt:   nil, // explicitly send null
+							LPTimestamp:          time.Now().UnixNano() / int64(time.Microsecond),
+							P:                    0,
+							Co:                   0,
+							Pe:                   ts,
+						}
+						safeWriteJSON(update)
+
+					} else if endpointType == "ORDER_BOOK_V3" {
+						safeWriteJSON(generateOrderBookV3(asset, quote, basePriceV3))
+
+					} else if endpointType == "ORDER_BOOK_V2" {
+						safeWriteJSON(generateOrderBookV2(asset, quote, basePriceV3))
 					}
 				}
 
@@ -275,16 +340,13 @@ func serveSocket(w http.ResponseWriter, r *http.Request, endpointType string) {
 			var msg ClientMessage
 			if err := json.Unmarshal(p, &msg); err == nil {
 
-				// --- 1. Global Actions ---
 				if msg.SimulatePeerClosed {
-					// Pass the current client pointer to filter it out
 					go server.BroadcastPeerClosed(client)
 					continue
 				}
 
 				if msg.CloseAllConnection {
 					safeWriteJSON(CloseAllResponse{CloseAllConnection: true})
-					// Pass the current client pointer to filter it out
 					go server.CloseAll(client)
 					continue
 				}
@@ -299,7 +361,6 @@ func serveSocket(w http.ResponseWriter, r *http.Request, endpointType string) {
 					continue
 				}
 
-				// --- 2. Subscription Actions ---
 				subKey := fmt.Sprintf("%s/%s", msg.AssetID, msg.QuoteCurrency)
 
 				switch msg.StreamAction {
@@ -319,8 +380,8 @@ func serveSocket(w http.ResponseWriter, r *http.Request, endpointType string) {
 					delete(activeSubs, subKey)
 					subMu.Unlock()
 
-					resStr := fmt.Sprintf("%s successfully unsubscribe %s_V3 with asset id %s quote currency %s",
-						connID, msg.StreamType, msg.AssetID, msg.QuoteCurrency)
+					resStr := fmt.Sprintf("%s successfully unsubscribe %s with asset id %s quote currency %s",
+						connID, endpointType, msg.AssetID, msg.QuoteCurrency)
 
 					safeWriteJSON(ConnectResponse{
 						ConnectionID: connID,
@@ -333,16 +394,79 @@ func serveSocket(w http.ResponseWriter, r *http.Request, endpointType string) {
 	}
 }
 
-// --- Generators (Unchanged) ---
+// --- Formatters ---
 
-func generateOrderBook(asset, quote string, basePrice float64) OrderBookUpdate {
-	asks := make([]OrderBookEntry, 0)
-	bids := make([]OrderBookEntry, 0)
+func formatIDRPrice(price float64) string {
+	s := fmt.Sprintf("%.0f", price)
+	var result []byte
+	for i, c := range s {
+		if i > 0 && (len(s)-i)%3 == 0 {
+			result = append(result, '.')
+		}
+		result = append(result, byte(c))
+	}
+	return string(result)
+}
+
+func formatDecimalComma(val float64, precision int) string {
+	s := strconv.FormatFloat(val, 'f', precision, 64)
+	return strings.Replace(s, ".", ",", 1)
+}
+
+// --- Generators ---
+
+func generateOrderBookV2(asset, quote string, basePrice float64) OrderBookUpdateV2 {
+	asks := make([]OrderBookEntryV2, 0)
+	bids := make([]OrderBookEntryV2, 0)
+	ts := time.Now().UnixNano() / int64(time.Millisecond)
+
+	for i := 0; i < 10; i++ {
+		price := basePrice + float64((i+1)*1500) + (rand.Float64() * 500)
+		qty := rand.Float64() * 0.7
+		asks = append(asks, OrderBookEntryV2{
+			QuantityLabel: formatDecimalComma(qty, 6),
+			PriceLabel:    formatIDRPrice(price),
+			Price:         price,
+			Quantity:      qty,
+		})
+	}
+	sort.Slice(asks, func(i, j int) bool { return asks[i].Price < asks[j].Price })
+
+	for i := 0; i < 10; i++ {
+		price := basePrice - float64((i+1)*1500) - (rand.Float64() * 500)
+		qty := rand.Float64() * 0.3
+		bids = append(bids, OrderBookEntryV2{
+			QuantityLabel: formatDecimalComma(qty, 6),
+			PriceLabel:    formatIDRPrice(price),
+			Price:         price,
+			Quantity:      qty,
+		})
+	}
+	sort.Slice(bids, func(i, j int) bool { return bids[i].Price > bids[j].Price })
+
+	return OrderBookUpdateV2{
+		AssetID:          asset,
+		QuoteCurrency:    quote,
+		Timestamp:        ts,
+		Asks:             asks,
+		Bids:             bids,
+		AskQtyPercentage: 58.0 + (rand.Float64() * 5.0),
+		BidQtyPercentage: 42.0 - (rand.Float64() * 5.0),
+		SumQty:           1.5 + rand.Float64(),
+		P:                119 + rand.Intn(10),
+		Co:               124 + rand.Intn(10),
+		Pe:               ts + 124,
+	}
+}
+
+func generateOrderBookV3(asset, quote string, basePrice float64) OrderBookUpdateV3 {
+	asks := make([]OrderBookEntryV3, 0)
+	bids := make([]OrderBookEntryV3, 0)
 
 	for i := 0; i < 6; i++ {
 		price := basePrice + float64((i+1)*5000000) + (rand.Float64() * 1000000)
 		qty := rand.Float64() * 0.1
-		asks = append(asks, OrderBookEntry{
+		asks = append(asks, OrderBookEntryV3{
 			PriceLabel:    fmt.Sprintf("%.0f", price),
 			Quantity:      qty,
 			QuantityLabel: fmt.Sprintf("%.3f", qty),
@@ -360,7 +484,7 @@ func generateOrderBook(asset, quote string, basePrice float64) OrderBookUpdate {
 			price = 1000000
 		}
 		qty := rand.Float64() * 1.5
-		bids = append(bids, OrderBookEntry{
+		bids = append(bids, OrderBookEntryV3{
 			PriceLabel:    fmt.Sprintf("%.0f", price),
 			Quantity:      qty,
 			QuantityLabel: fmt.Sprintf("%.3f", qty),
@@ -372,7 +496,7 @@ func generateOrderBook(asset, quote string, basePrice float64) OrderBookUpdate {
 		return pI > pJ
 	})
 
-	return OrderBookUpdate{
+	return OrderBookUpdateV3{
 		AssetID:          asset,
 		QuoteCurrency:    quote,
 		Timestamp:        time.Now().UnixNano() / int64(time.Millisecond),
@@ -385,23 +509,23 @@ func generateOrderBook(asset, quote string, basePrice float64) OrderBookUpdate {
 }
 
 func main() {
-	hostFlag := flag.String("host", "localhost", "Host address to bind to")
-	portFlag := flag.String("port", "8080", "Port to bind to")
-
-	flag.Parse()
-
-	addr := fmt.Sprintf("%s:%s", *hostFlag, *portFlag)
-
 	rand.Seed(time.Now().UnixNano())
 
-	http.HandleFunc("/ws/v3/coin-data/price", handlePriceSocket)
-	http.HandleFunc("/ws/v3/coin-data/order-book", handleOrderBookSocket)
+	// Handlers for V2 & V3 routing
+	http.HandleFunc("/ws/v3/coin-data/price", handlePriceSocketV3)
+	http.HandleFunc("/ws/v2/coin-data/price", handlePriceSocketV2)
 
-	log.Printf("Starting WebSocket mock server on %s", addr)
-	log.Printf("- Price Socket: ws://%s/ws/v3/coin-data/price", addr)
-	log.Printf("- Order Book Socket: ws://%s/ws/v3/coin-data/order-book", addr)
+	http.HandleFunc("/ws/v3/coin-data/order-book", handleOrderBookSocketV3)
+	http.HandleFunc("/ws/v2/coin-data/order-book", handleOrderBookSocketV2)
 
-	if err := http.ListenAndServe(addr, nil); err != nil {
+	port := ":8080"
+	log.Printf("Starting WebSocket mock server on ws://localhost%s", port)
+	log.Printf("- Price Socket (V3): ws://localhost%s/ws/v3/coin-data/price", port)
+	log.Printf("- Price Socket (V2): ws://localhost%s/ws/v2/coin-data/price", port)
+	log.Printf("- Order Book (V3):   ws://localhost%s/ws/v3/coin-data/order-book", port)
+	log.Printf("- Order Book (V2):   ws://localhost%s/ws/v2/coin-data/order-book", port)
+
+	if err := http.ListenAndServe(port, nil); err != nil {
 		log.Fatal("ListenAndServe:", err)
 	}
 }
