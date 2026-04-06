@@ -140,7 +140,7 @@ type PriceUpdateV2 struct {
 	PriceInIDRLabel      string  `json:"price_in_idr_label"`
 	PriceChangeLabel     string  `json:"price_change_label"`
 	PriceRateChangeLabel string  `json:"price_rate_change_label"`
-	StreamerReceivedAt   any     `json:"streamer_received_at"` // using any to cleanly send null
+	StreamerReceivedAt   any     `json:"streamer_received_at"`
 	LPTimestamp          int64   `json:"lp_timestamp"`
 	P                    int     `json:"p"`
 	Co                   int     `json:"co"`
@@ -187,6 +187,21 @@ type OrderBookUpdateV2 struct {
 	Pe               int64              `json:"pe"`
 }
 
+// --- Futures Market Trade Models ---
+type FuturesMarketTrade struct {
+	Side         string  `json:"side"`
+	Symbol       string  `json:"symbol"`
+	Price        float64 `json:"price"`
+	Size         float64 `json:"size"`
+	Timestamp    float64 `json:"timestamp"`
+	ExchangeName string  `json:"exchange_name"`
+}
+
+type FuturesMarketTradesUpdate struct {
+	Trades []FuturesMarketTrade `json:"trades"`
+	Symbol string               `json:"symbol"`
+}
+
 // --- Handlers ---
 
 func handlePriceSocketV3(w http.ResponseWriter, r *http.Request) {
@@ -203,6 +218,10 @@ func handleOrderBookSocketV3(w http.ResponseWriter, r *http.Request) {
 
 func handleOrderBookSocketV2(w http.ResponseWriter, r *http.Request) {
 	serveSocket(w, r, "ORDER_BOOK_V2")
+}
+
+func handleFuturesMarketTradeSocket(w http.ResponseWriter, r *http.Request) {
+	serveSocket(w, r, "FUTURES_MARKET_TRADE")
 }
 
 func serveSocket(w http.ResponseWriter, r *http.Request, endpointType string) {
@@ -243,7 +262,6 @@ func serveSocket(w http.ResponseWriter, r *http.Request, endpointType string) {
 		timer := time.NewTimer(time.Duration(rate) * time.Millisecond)
 		defer timer.Stop()
 
-		// Setting an appropriate base price depending on the stream type logic
 		basePriceV3 := 1175644449.0
 		basePriceV2 := 698.2924
 
@@ -281,7 +299,7 @@ func serveSocket(w http.ResponseWriter, r *http.Request, endpointType string) {
 						safeWriteJSON(update)
 
 					} else if endpointType == "PRICE_V2" {
-						basePriceV2 += (rand.Float64() * 10) - 5 // Smaller increments to showcase fractions
+						basePriceV2 += (rand.Float64() * 10) - 5
 						priceChange := (rand.Float64() * 100) - 50
 						priceRateChange := (rand.Float64() * 20) - 10
 
@@ -294,7 +312,7 @@ func serveSocket(w http.ResponseWriter, r *http.Request, endpointType string) {
 							PriceInIDRLabel:      formatDecimalComma(basePriceV2, 4),
 							PriceChangeLabel:     formatDecimalComma(priceChange, 6),
 							PriceRateChangeLabel: formatDecimalComma(priceRateChange, 2),
-							StreamerReceivedAt:   nil, // explicitly send null
+							StreamerReceivedAt:   nil,
 							LPTimestamp:          time.Now().UnixNano() / int64(time.Microsecond),
 							P:                    0,
 							Co:                   0,
@@ -307,6 +325,9 @@ func serveSocket(w http.ResponseWriter, r *http.Request, endpointType string) {
 
 					} else if endpointType == "ORDER_BOOK_V2" {
 						safeWriteJSON(generateOrderBookV2(asset, quote, basePriceV3))
+
+					} else if endpointType == "FUTURES_MARKET_TRADE" {
+						safeWriteJSON(generateFuturesMarketTrades(asset, quote, basePriceV3))
 					}
 				}
 
@@ -415,6 +436,42 @@ func formatDecimalComma(val float64, precision int) string {
 
 // --- Generators ---
 
+func generateFuturesMarketTrades(asset, quote string, fallbackBasePrice float64) FuturesMarketTradesUpdate {
+	basePrice := fallbackBasePrice
+	if strings.ToUpper(quote) == "USDT" {
+		basePrice = 69000.0
+	}
+
+	numTrades := rand.Intn(3) + 1
+	trades := make([]FuturesMarketTrade, 0, numTrades)
+
+	for i := 0; i < numTrades; i++ {
+		priceOffset := (rand.Float64() * 100) - 50
+		price := basePrice + priceOffset
+
+		side := "BUY"
+		if rand.Float32() > 0.5 {
+			side = "SELL"
+		}
+
+		size := rand.Float64() * 0.05
+
+		trades = append(trades, FuturesMarketTrade{
+			Side:         side,
+			Symbol:       asset + "_" + quote,
+			Price:        price,
+			Size:         size,
+			Timestamp:    float64(time.Now().UnixNano() / int64(time.Millisecond)),
+			ExchangeName: "Binance",
+		})
+	}
+
+	return FuturesMarketTradesUpdate{
+		Trades: trades,
+		Symbol: asset + "_" + quote,
+	}
+}
+
 func generateOrderBookV2(asset, quote string, basePrice float64) OrderBookUpdateV2 {
 	asks := make([]OrderBookEntryV2, 0)
 	bids := make([]OrderBookEntryV2, 0)
@@ -511,12 +568,13 @@ func generateOrderBookV3(asset, quote string, basePrice float64) OrderBookUpdate
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
-	// Handlers for V2 & V3 routing
 	http.HandleFunc("/ws/v3/coin-data/price", handlePriceSocketV3)
 	http.HandleFunc("/ws/v2/coin-data/price", handlePriceSocketV2)
 
 	http.HandleFunc("/ws/v3/coin-data/order-book", handleOrderBookSocketV3)
 	http.HandleFunc("/ws/v2/coin-data/order-book", handleOrderBookSocketV2)
+
+	http.HandleFunc("/ws/coin-data/futures/market-trade", handleFuturesMarketTradeSocket)
 
 	port := ":8080"
 	log.Printf("Starting WebSocket mock server on ws://localhost%s", port)
@@ -524,6 +582,7 @@ func main() {
 	log.Printf("- Price Socket (V2): ws://localhost%s/ws/v2/coin-data/price", port)
 	log.Printf("- Order Book (V3):   ws://localhost%s/ws/v3/coin-data/order-book", port)
 	log.Printf("- Order Book (V2):   ws://localhost%s/ws/v2/coin-data/order-book", port)
+	log.Printf("- Futures Trade:     ws://localhost%s/ws/coin-data/futures/market-trade", port)
 
 	if err := http.ListenAndServe(port, nil); err != nil {
 		log.Fatal("ListenAndServe:", err)
