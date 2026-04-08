@@ -42,3 +42,7 @@ Ping
 ```
 {"simulate_peer_closed": true}
 ```
+
+```
+{"order_book_size": "50"}
+```

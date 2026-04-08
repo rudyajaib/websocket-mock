@@ -26,9 +26,10 @@ type ClientConn struct {
 }
 
 type MockServer struct {
-	clients   map[*ClientConn]bool
-	clientsMu sync.Mutex
-	tickMs    int64
+	clients       map[*ClientConn]bool
+	clientsMu     sync.Mutex
+	tickMs        int64
+	orderBookSize int64
 }
 
 func (s *MockServer) AddClient(c *ClientConn) {
@@ -86,8 +87,9 @@ func (s *MockServer) BroadcastPeerClosed(sender *ClientConn) {
 }
 
 var server = &MockServer{
-	clients: make(map[*ClientConn]bool),
-	tickMs:  1000,
+	clients:       make(map[*ClientConn]bool),
+	tickMs:        1000,
+	orderBookSize: 30,
 }
 
 var upgrader = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
@@ -102,6 +104,7 @@ type ClientMessage struct {
 	ID                 any    `json:"id"`
 	Source             string `json:"source"`
 	Rate               string `json:"rate"`
+	OrderBookSize      string `json:"order_book_size"` // New dynamic command
 	CloseAllConnection bool   `json:"close_all_connection"`
 	SimulatePeerClosed bool   `json:"simulate_peer_closed"`
 }
@@ -113,6 +116,10 @@ type ConnectResponse struct {
 
 type TickRateResponse struct {
 	CurrentRate string `json:"current_rate"`
+}
+
+type OrderBookSizeResponse struct {
+	CurrentOrderBookSize string `json:"current_order_book_size"`
 }
 
 type CloseAllResponse struct {
@@ -277,6 +284,8 @@ func serveSocket(w http.ResponseWriter, r *http.Request, endpointType string) {
 				}
 				subMu.RUnlock()
 
+				currentOBSize := int(atomic.LoadInt64(&server.orderBookSize))
+
 				for _, subStr := range subs {
 					parts := strings.Split(subStr, "/")
 					if len(parts) != 2 {
@@ -321,10 +330,10 @@ func serveSocket(w http.ResponseWriter, r *http.Request, endpointType string) {
 						safeWriteJSON(update)
 
 					} else if endpointType == "ORDER_BOOK_V3" {
-						safeWriteJSON(generateOrderBookV3(asset, quote, basePriceV3))
+						safeWriteJSON(generateOrderBookV3(asset, quote, basePriceV3, currentOBSize))
 
 					} else if endpointType == "ORDER_BOOK_V2" {
-						safeWriteJSON(generateOrderBookV2(asset, quote, basePriceV3))
+						safeWriteJSON(generateOrderBookV2(asset, quote, basePriceV3, currentOBSize))
 
 					} else if endpointType == "FUTURES_MARKET_TRADE" {
 						safeWriteJSON(generateFuturesMarketTrades(asset, quote, basePriceV3))
@@ -378,6 +387,16 @@ func serveSocket(w http.ResponseWriter, r *http.Request, endpointType string) {
 						atomic.StoreInt64(&server.tickMs, parsedRate)
 						safeWriteJSON(TickRateResponse{CurrentRate: msg.Rate})
 						log.Printf("Global tick rate adjusted to %d ms", parsedRate)
+					}
+					continue
+				}
+
+				if msg.OrderBookSize != "" {
+					parsedSize, err := strconv.ParseInt(msg.OrderBookSize, 10, 64)
+					if err == nil && parsedSize > 0 {
+						atomic.StoreInt64(&server.orderBookSize, parsedSize)
+						safeWriteJSON(OrderBookSizeResponse{CurrentOrderBookSize: msg.OrderBookSize})
+						log.Printf("Global order book size adjusted to %d", parsedSize)
 					}
 					continue
 				}
@@ -472,12 +491,12 @@ func generateFuturesMarketTrades(asset, quote string, fallbackBasePrice float64)
 	}
 }
 
-func generateOrderBookV2(asset, quote string, basePrice float64) OrderBookUpdateV2 {
-	asks := make([]OrderBookEntryV2, 0)
-	bids := make([]OrderBookEntryV2, 0)
+func generateOrderBookV2(asset, quote string, basePrice float64, size int) OrderBookUpdateV2 {
+	asks := make([]OrderBookEntryV2, 0, size)
+	bids := make([]OrderBookEntryV2, 0, size)
 	ts := time.Now().UnixNano() / int64(time.Millisecond)
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < size; i++ {
 		price := basePrice + float64((i+1)*1500) + (rand.Float64() * 500)
 		qty := rand.Float64() * 0.7
 		asks = append(asks, OrderBookEntryV2{
@@ -489,7 +508,7 @@ func generateOrderBookV2(asset, quote string, basePrice float64) OrderBookUpdate
 	}
 	sort.Slice(asks, func(i, j int) bool { return asks[i].Price < asks[j].Price })
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < size; i++ {
 		price := basePrice - float64((i+1)*1500) - (rand.Float64() * 500)
 		qty := rand.Float64() * 0.3
 		bids = append(bids, OrderBookEntryV2{
@@ -516,11 +535,11 @@ func generateOrderBookV2(asset, quote string, basePrice float64) OrderBookUpdate
 	}
 }
 
-func generateOrderBookV3(asset, quote string, basePrice float64) OrderBookUpdateV3 {
-	asks := make([]OrderBookEntryV3, 0)
-	bids := make([]OrderBookEntryV3, 0)
+func generateOrderBookV3(asset, quote string, basePrice float64, size int) OrderBookUpdateV3 {
+	asks := make([]OrderBookEntryV3, 0, size)
+	bids := make([]OrderBookEntryV3, 0, size)
 
-	for i := 0; i < 6; i++ {
+	for i := 0; i < size; i++ {
 		price := basePrice + float64((i+1)*5000000) + (rand.Float64() * 1000000)
 		qty := rand.Float64() * 0.1
 		asks = append(asks, OrderBookEntryV3{
@@ -535,7 +554,7 @@ func generateOrderBookV3(asset, quote string, basePrice float64) OrderBookUpdate
 		return pI < pJ
 	})
 
-	for i := 0; i < 12; i++ {
+	for i := 0; i < size; i++ {
 		price := basePrice - float64((i+1)*20000000) - (rand.Float64() * 1000000)
 		if price < 1000000 {
 			price = 1000000
