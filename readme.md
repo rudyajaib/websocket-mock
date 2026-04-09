@@ -1,8 +1,16 @@
+List of API that works with this mock server:
+```
+ws://localhost:8080/ws/v3/coin-data/price
+ws://localhost:8080/ws/v2/coin-data/price
+ws://localhost:8080/ws/v3/coin-data/order-book
+ws://localhost:8080/ws/v2/coin-data/order-book
+ws://localhost:8080/ws/coin-data/futures/market-trade
+```
+
+To send command, you can open connection with `wscat`, install it via npm or homebrew.
+Example:
 ```
 wscat -c ws://localhost:8080/ws/v3/coin-data/price
-wscat -c ws://localhost:8080/ws/v3/coin-data/order-book
-wscat -c ws://localhost:8080/ws/v2/coin-data/price
-wscat -c ws://localhost:8080/ws/v2/coin-data/order-book
 ```
 
 list of command
