@@ -578,8 +578,8 @@ func generateOrderBookV3(asset, quote string, basePrice float64, size int) Order
 		Timestamp:        time.Now().UnixNano() / int64(time.Millisecond),
 		Asks:             asks,
 		Bids:             bids,
-		AskQtyPercentage: "1",
-		BidQtyPercentage: "99",
+		AskQtyPercentage: fmt.Sprintf("%.0f", 58.0+(rand.Float64()*5.0)),
+		BidQtyPercentage: fmt.Sprintf("%.0f", 42.0-(rand.Float64()*5.0)),
 		SumQty:           fmt.Sprintf("%.0f", 200000+(rand.Float64()*10000)),
 	}
 }
