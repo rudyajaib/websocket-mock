@@ -96,7 +96,13 @@ var upgrader = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { retu
 
 // --- Request Data Structures ---
 
+type WatchlistItemReq struct {
+	WatchlistItemType  string `json:"watchlist_item_type"`
+	WatchlistItemValue string `json:"watchlist_item_value"`
+}
+
 type ClientMessage struct {
+	// Existing standard fields
 	AssetID            string `json:"asset_id"`
 	QuoteCurrency      string `json:"quote_currency"`
 	StreamAction       string `json:"stream_action"`
@@ -104,9 +110,15 @@ type ClientMessage struct {
 	ID                 any    `json:"id"`
 	Source             string `json:"source"`
 	Rate               string `json:"rate"`
-	OrderBookSize      string `json:"order_book_size"` // New dynamic command
+	OrderBookSize      string `json:"order_book_size"`
 	CloseAllConnection bool   `json:"close_all_connection"`
 	SimulatePeerClosed bool   `json:"simulate_peer_closed"`
+
+	// New fields for Watchlist support
+	StreamingKey     string             `json:"streaming_key"`
+	WatchlistItems   []WatchlistItemReq `json:"watchlist_items"`
+	WatchlistGroupID int                `json:"watchlist_group_id"`
+	Action           string             `json:"action"` // Used instead of StreamAction for Watchlist
 }
 
 type ConnectResponse struct {
@@ -209,6 +221,16 @@ type FuturesMarketTradesUpdate struct {
 	Symbol string               `json:"symbol"`
 }
 
+// --- Watchlist Update Models ---
+type WatchlistItemUpdate struct {
+	Type            string `json:"type"`
+	Value           string `json:"value"`
+	Price           string `json:"price"`
+	PriceChange     string `json:"price_change"`
+	PriceChangeRate string `json:"price_change_rate"`
+	Scale           int    `json:"scale"`
+}
+
 // --- Handlers ---
 
 func handlePriceSocketV3(w http.ResponseWriter, r *http.Request) {
@@ -229,6 +251,10 @@ func handleOrderBookSocketV2(w http.ResponseWriter, r *http.Request) {
 
 func handleFuturesMarketTradeSocket(w http.ResponseWriter, r *http.Request) {
 	serveSocket(w, r, "FUTURES_MARKET_TRADE")
+}
+
+func handleWatchlistSocket(w http.ResponseWriter, r *http.Request) {
+	serveSocket(w, r, "WATCHLIST")
 }
 
 func serveSocket(w http.ResponseWriter, r *http.Request, endpointType string) {
@@ -286,57 +312,78 @@ func serveSocket(w http.ResponseWriter, r *http.Request, endpointType string) {
 
 				currentOBSize := int(atomic.LoadInt64(&server.orderBookSize))
 
-				for _, subStr := range subs {
-					parts := strings.Split(subStr, "/")
-					if len(parts) != 2 {
-						continue
+				if endpointType == "WATCHLIST" {
+					if len(subs) > 0 {
+						var updates []WatchlistItemUpdate
+						for _, subStr := range subs {
+							parts := strings.SplitN(subStr, ":", 2)
+							if len(parts) == 2 {
+								p, c, r, s := generateWatchlistMockData(parts[0], parts[1])
+								updates = append(updates, WatchlistItemUpdate{
+									Type:            parts[0],
+									Value:           parts[1],
+									Price:           p,
+									PriceChange:     c,
+									PriceChangeRate: r,
+									Scale:           s,
+								})
+							}
+						}
+						safeWriteJSON(updates)
 					}
-					asset, quote := parts[0], parts[1]
-					ts := time.Now().UnixNano() / int64(time.Millisecond)
-
-					if endpointType == "PRICE_V3" {
-						basePriceV3 += (rand.Float64() * 1000) - 500
-						update := PriceUpdateV3{
-							AssetID:              asset,
-							QuoteCurrency:        quote,
-							Timestamp:            ts,
-							PriceLabel:           fmt.Sprintf("%.0f", basePriceV3),
-							PriceChangeLabel:     fmt.Sprintf("%.2f", (rand.Float64()*100)-50),
-							PriceRateChangeLabel: fmt.Sprintf("%.2f", (rand.Float64()*4)-2),
-							MarkPriceLabel:       fmt.Sprintf("%.0f", basePriceV3+((rand.Float64()*200)-100)),
+				} else {
+					for _, subStr := range subs {
+						parts := strings.Split(subStr, "/")
+						if len(parts) != 2 {
+							continue
 						}
-						safeWriteJSON(update)
+						asset, quote := parts[0], parts[1]
+						ts := time.Now().UnixNano() / int64(time.Millisecond)
 
-					} else if endpointType == "PRICE_V2" {
-						basePriceV2 += (rand.Float64() * 10) - 5
-						priceChange := (rand.Float64() * 100) - 50
-						priceRateChange := (rand.Float64() * 20) - 10
+						if endpointType == "PRICE_V3" {
+							basePriceV3 += (rand.Float64() * 1000) - 500
+							update := PriceUpdateV3{
+								AssetID:              asset,
+								QuoteCurrency:        quote,
+								Timestamp:            ts,
+								PriceLabel:           fmt.Sprintf("%.0f", basePriceV3),
+								PriceChangeLabel:     fmt.Sprintf("%.2f", (rand.Float64()*100)-50),
+								PriceRateChangeLabel: fmt.Sprintf("%.2f", (rand.Float64()*4)-2),
+								MarkPriceLabel:       fmt.Sprintf("%.0f", basePriceV3+((rand.Float64()*200)-100)),
+							}
+							safeWriteJSON(update)
 
-						update := PriceUpdateV2{
-							AssetID:              asset,
-							QuoteCurrency:        quote,
-							Timestamp:            ts,
-							PriceLabel:           formatDecimalComma(basePriceV2, 4),
-							Price:                basePriceV2,
-							PriceInIDRLabel:      formatDecimalComma(basePriceV2, 4),
-							PriceChangeLabel:     formatDecimalComma(priceChange, 6),
-							PriceRateChangeLabel: formatDecimalComma(priceRateChange, 2),
-							StreamerReceivedAt:   nil,
-							LPTimestamp:          time.Now().UnixNano() / int64(time.Microsecond),
-							P:                    0,
-							Co:                   0,
-							Pe:                   ts,
+						} else if endpointType == "PRICE_V2" {
+							basePriceV2 += (rand.Float64() * 10) - 5
+							priceChange := (rand.Float64() * 100) - 50
+							priceRateChange := (rand.Float64() * 20) - 10
+
+							update := PriceUpdateV2{
+								AssetID:              asset,
+								QuoteCurrency:        quote,
+								Timestamp:            ts,
+								PriceLabel:           formatDecimalComma(basePriceV2, 4),
+								Price:                basePriceV2,
+								PriceInIDRLabel:      formatDecimalComma(basePriceV2, 4),
+								PriceChangeLabel:     formatDecimalComma(priceChange, 6),
+								PriceRateChangeLabel: formatDecimalComma(priceRateChange, 2),
+								StreamerReceivedAt:   nil,
+								LPTimestamp:          time.Now().UnixNano() / int64(time.Microsecond),
+								P:                    0,
+								Co:                   0,
+								Pe:                   ts,
+							}
+							safeWriteJSON(update)
+
+						} else if endpointType == "ORDER_BOOK_V3" {
+							safeWriteJSON(generateOrderBookV3(asset, quote, basePriceV3, currentOBSize))
+
+						} else if endpointType == "ORDER_BOOK_V2" {
+							safeWriteJSON(generateOrderBookV2(asset, quote, basePriceV3, currentOBSize))
+
+						} else if endpointType == "FUTURES_MARKET_TRADE" {
+							safeWriteJSON(generateFuturesMarketTrades(asset, quote, basePriceV3))
 						}
-						safeWriteJSON(update)
-
-					} else if endpointType == "ORDER_BOOK_V3" {
-						safeWriteJSON(generateOrderBookV3(asset, quote, basePriceV3, currentOBSize))
-
-					} else if endpointType == "ORDER_BOOK_V2" {
-						safeWriteJSON(generateOrderBookV2(asset, quote, basePriceV3, currentOBSize))
-
-					} else if endpointType == "FUTURES_MARKET_TRADE" {
-						safeWriteJSON(generateFuturesMarketTrades(asset, quote, basePriceV3))
 					}
 				}
 
@@ -401,33 +448,65 @@ func serveSocket(w http.ResponseWriter, r *http.Request, endpointType string) {
 					continue
 				}
 
-				subKey := fmt.Sprintf("%s/%s", msg.AssetID, msg.QuoteCurrency)
+				// Determine Action
+				action := msg.StreamAction
+				if msg.Action != "" {
+					action = msg.Action
+				}
 
-				switch msg.StreamAction {
+				switch action {
 				case "SUBSCRIBE":
+					var pairs []string
 					subMu.Lock()
-					activeSubs[subKey] = true
+					if endpointType == "WATCHLIST" {
+						for _, item := range msg.WatchlistItems {
+							subKey := fmt.Sprintf("%s:%s", item.WatchlistItemType, item.WatchlistItemValue)
+							activeSubs[subKey] = true
+							pairs = append(pairs, subKey)
+						}
+					} else {
+						subKey := fmt.Sprintf("%s/%s", msg.AssetID, msg.QuoteCurrency)
+						activeSubs[subKey] = true
+						pairs = append(pairs, subKey)
+					}
 					subMu.Unlock()
 
 					safeWriteJSON(ConnectResponse{
 						ConnectionID: connID,
 						Result:       "successfully subscribe",
 					})
-					log.Printf("Client subscribed to %s on %s", subKey, endpointType)
+					log.Printf("[ConnID: %s] Client SUBSCRIBED to endpoint: %s | pairs: %v", connID, endpointType, pairs)
 
 				case "UNSUBSCRIBE":
+					var pairs []string
 					subMu.Lock()
-					delete(activeSubs, subKey)
+					if endpointType == "WATCHLIST" {
+						for _, item := range msg.WatchlistItems {
+							subKey := fmt.Sprintf("%s:%s", item.WatchlistItemType, item.WatchlistItemValue)
+							delete(activeSubs, subKey)
+							pairs = append(pairs, subKey)
+						}
+					} else {
+						subKey := fmt.Sprintf("%s/%s", msg.AssetID, msg.QuoteCurrency)
+						delete(activeSubs, subKey)
+						pairs = append(pairs, subKey)
+					}
 					subMu.Unlock()
 
-					resStr := fmt.Sprintf("%s successfully unsubscribe %s with asset id %s quote currency %s",
-						connID, endpointType, msg.AssetID, msg.QuoteCurrency)
+					var resStr string
+					if endpointType == "WATCHLIST" {
+						resStr = fmt.Sprintf("%s successfully unsubscribe %s from watchlist group %d",
+							connID, endpointType, msg.WatchlistGroupID)
+					} else {
+						resStr = fmt.Sprintf("%s successfully unsubscribe %s with asset id %s quote currency %s",
+							connID, endpointType, msg.AssetID, msg.QuoteCurrency)
+					}
 
 					safeWriteJSON(ConnectResponse{
 						ConnectionID: connID,
 						Result:       resStr,
 					})
-					log.Printf("Client unsubscribed from %s on %s", subKey, endpointType)
+					log.Printf("[ConnID: %s] Client UNSUBSCRIBED from endpoint: %s | pairs: %v", connID, endpointType, pairs)
 				}
 			}
 		}
@@ -454,6 +533,44 @@ func formatDecimalComma(val float64, precision int) string {
 }
 
 // --- Generators ---
+
+func generateWatchlistMockData(itemType, itemValue string) (string, string, string, int) {
+	basePrice := 1000.0
+	scale := 0
+
+	// Set pseudo-realistic baseline prices
+	if strings.Contains(itemValue, "BTC") && strings.Contains(itemValue, "IDR") {
+		basePrice = 1337954910.0
+	} else if strings.Contains(itemValue, "ETH") {
+		basePrice = 39452100.0
+	} else if strings.Contains(itemValue, "SOL") {
+		basePrice = 2597336.0
+	} else if strings.Contains(itemValue, "PEPE") {
+		basePrice = 0.0785672
+		scale = 8
+	} else if strings.Contains(itemValue, "BTC/USDT") {
+		basePrice = 77225.7
+		scale = 2
+	}
+
+	priceOffset := basePrice * (rand.Float64()*0.02 - 0.01) // +/- 1% current shift
+	currentPrice := basePrice + priceOffset
+	change := currentPrice * (rand.Float64()*0.1 - 0.05) // +/- 5% 24h change mock
+	rate := (change / basePrice) * 100
+
+	var priceStr, changeStr string
+	if scale == 0 {
+		priceStr = fmt.Sprintf("%.0f", currentPrice)
+		changeStr = fmt.Sprintf("%.0f", change)
+	} else {
+		format := fmt.Sprintf("%%.%df", scale)
+		priceStr = fmt.Sprintf(format, currentPrice)
+		changeStr = fmt.Sprintf(format, change)
+	}
+	rateStr := fmt.Sprintf("%.2f", rate)
+
+	return priceStr, changeStr, rateStr, scale
+}
 
 func generateFuturesMarketTrades(asset, quote string, fallbackBasePrice float64) FuturesMarketTradesUpdate {
 	basePrice := fallbackBasePrice
@@ -595,6 +712,9 @@ func main() {
 
 	http.HandleFunc("/ws/coin-data/futures/market-trade", handleFuturesMarketTradeSocket)
 
+	// New Watchlist Endpoint
+	http.HandleFunc("/ws/v2/watchlist", handleWatchlistSocket)
+
 	port := ":8080"
 	log.Printf("Starting WebSocket mock server on ws://localhost%s", port)
 	log.Printf("- Price Socket (V3): ws://localhost%s/ws/v3/coin-data/price", port)
@@ -602,6 +722,7 @@ func main() {
 	log.Printf("- Order Book (V3):   ws://localhost%s/ws/v3/coin-data/order-book", port)
 	log.Printf("- Order Book (V2):   ws://localhost%s/ws/v2/coin-data/order-book", port)
 	log.Printf("- Futures Trade:     ws://localhost%s/ws/coin-data/futures/market-trade", port)
+	log.Printf("- Watchlist (V2):    ws://localhost%s/ws/v2/watchlist", port)
 
 	if err := http.ListenAndServe(port, nil); err != nil {
 		log.Fatal("ListenAndServe:", err)
