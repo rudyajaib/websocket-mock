@@ -475,7 +475,7 @@ func serveSocket(w http.ResponseWriter, r *http.Request, endpointType string) {
 						ConnectionID: connID,
 						Result:       "successfully subscribe",
 					})
-					log.Printf("[ConnID: %s] Client SUBSCRIBED to endpoint: %s | pairs: %v", connID, endpointType, pairs)
+					log.Printf("[ConnID: %s] Client SUBSCRIBED to endpoint: %s | number of pairs: %d | pairs: %v", connID, endpointType, len(activeSubs), pairs)
 
 				case "UNSUBSCRIBE":
 					var pairs []string
@@ -506,7 +506,7 @@ func serveSocket(w http.ResponseWriter, r *http.Request, endpointType string) {
 						ConnectionID: connID,
 						Result:       resStr,
 					})
-					log.Printf("[ConnID: %s] Client UNSUBSCRIBED from endpoint: %s | pairs: %v", connID, endpointType, pairs)
+					log.Printf("[ConnID: %s] Client UNSUBSCRIBED from endpoint: %s | number of pairs: %d | pairs: %v", connID, endpointType, len(activeSubs), pairs)
 				}
 			}
 		}

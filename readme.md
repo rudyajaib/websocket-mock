@@ -5,6 +5,7 @@ ws://localhost:8080/ws/v2/coin-data/price
 ws://localhost:8080/ws/v3/coin-data/order-book
 ws://localhost:8080/ws/v2/coin-data/order-book
 ws://localhost:8080/ws/coin-data/futures/market-trade
+ws://localhost:8080/ws/v2/watchlist
 ```
 
 To send command, you can open connection with `wscat`, install it via npm or homebrew.
