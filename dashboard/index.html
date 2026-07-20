@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebSocket Mock Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <style>
+    :root {
+      --bg-color: #0f111a;
+      --panel-bg: rgba(25, 28, 41, 0.65);
+      --panel-border: rgba(255, 255, 255, 0.08);
+      --text-main: #f8f9fa;
+      --text-muted: #9ca3af;
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --accent-transparent: rgba(99, 102, 241, 0.15);
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --danger-hover: #dc2626;
+      --card-bg: rgba(30, 33, 48, 0.5);
+      --nav-bg: rgba(15, 17, 26, 0.8);
+      --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+      --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background-image:
+        radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.05) 0%, transparent 50%);
+    }
+
+    /* ─── Header ─── */
+    header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1rem 2rem;
+      background: var(--nav-bg); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--panel-border); z-index: 10;
+    }
+    .logo { display: flex; align-items: center; gap: 0.75rem; font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; }
+    .logo i { color: var(--accent); font-size: 1.5rem; }
+
+    .status-indicator {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-size: 0.875rem; font-weight: 500;
+      padding: 0.4rem 0.8rem; border-radius: 9999px;
+      background: rgba(16, 185, 129, 0.1); color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.2); transition: all 0.3s ease;
+    }
+    .status-indicator.disconnected { background: rgba(239, 68, 68, 0.1); color: var(--danger); border-color: rgba(239, 68, 68, 0.2); }
+    .pulse { width: 8px; height: 8px; border-radius: 50%; background-color: currentColor; animation: pulse-animation 2s infinite; }
+    .status-indicator.disconnected .pulse { animation: pulse-animation-danger 2s infinite; }
+    @keyframes pulse-animation { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
+    @keyframes pulse-animation-danger { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+
+    /* ─── Layout ─── */
+    .app-container { display: flex; flex: 1; overflow: hidden; }
+
+    .sidebar {
+      width: 260px; background: var(--nav-bg); border-right: 1px solid var(--panel-border);
+      padding: 1.5rem 1rem; display: flex; flex-direction: column; gap: 0.5rem; backdrop-filter: blur(12px);
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.875rem 1rem; border-radius: 0.75rem; color: var(--text-muted);
+      text-decoration: none; font-weight: 500; cursor: pointer;
+      border: 1px solid transparent; transition: all 0.2s ease;
+    }
+    .nav-item i { font-size: 1.25rem; }
+    .nav-item:hover { color: var(--text-main); background: rgba(255, 255, 255, 0.03); }
+    .nav-item.active { color: var(--text-main); background: var(--accent-transparent); border-color: rgba(99, 102, 241, 0.2); }
+    .nav-item.active i { color: var(--accent); }
+
+    .content-area { flex: 1; overflow-y: auto; padding: 2rem; position: relative; }
+    .section { display: none; animation: fadeIn 0.3s ease; }
+    .section.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .section-title { font-size: 1.75rem; font-weight: 600; margin-bottom: 1.5rem; letter-spacing: -0.02em; }
+
+    /* ─── Cards & Panels ─── */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 2rem; }
+    .stat-card { background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 1rem; padding: 1.25rem; backdrop-filter: blur(12px); box-shadow: var(--shadow-sm); }
+    .stat-title { font-size: 0.875rem; color: var(--text-muted); font-weight: 500; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+    .stat-value { font-size: 2rem; font-weight: 700; color: var(--text-main); font-variant-numeric: tabular-nums; }
+
+    .panel { background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 1rem; padding: 1.5rem; margin-bottom: 1.5rem; backdrop-filter: blur(12px); box-shadow: var(--shadow-sm); }
+    .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--panel-border); }
+    .panel-title { font-size: 1.125rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+
+    .connection-list { display: flex; flex-direction: column; gap: 1rem; }
+    .connection-item { background: var(--card-bg); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 0.75rem; padding: 1rem; transition: all 0.2s; }
+    .connection-item:hover { border-color: rgba(255, 255, 255, 0.1); background: rgba(40, 44, 61, 0.6); }
+    .conn-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+    .conn-id { font-family: 'Fira Code', monospace; font-size: 0.875rem; color: var(--accent); background: var(--accent-transparent); padding: 0.2rem 0.6rem; border-radius: 0.4rem; }
+    .conn-endpoint { font-size: 0.875rem; font-weight: 600; }
+    .conn-time { font-size: 0.75rem; color: var(--text-muted); }
+    .subs-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .sub-badge { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; font-weight: 500; background: rgba(255, 255, 255, 0.08); padding: 0.25rem 0.6rem; border-radius: 9999px; color: #e5e7eb; }
+    .sub-badge .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+
+    /* ─── Buttons & Inputs ─── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+      background: rgba(255, 255, 255, 0.1); color: var(--text-main);
+      border: 1px solid rgba(255, 255, 255, 0.1); padding: 0.5rem 1rem;
+      border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500;
+      cursor: pointer; transition: all 0.2s; font-family: inherit;
+    }
+    .btn:hover { background: rgba(255, 255, 255, 0.15); }
+    .btn-primary { background: var(--accent); border-color: var(--accent); }
+    .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+    .btn-danger { background: rgba(239, 68, 68, 0.1); color: var(--danger); border-color: rgba(239, 68, 68, 0.2); }
+    .btn-danger:hover { background: var(--danger); color: white; }
+    .btn-sm { padding: 0.3rem 0.6rem; font-size: 0.8rem; }
+    .btn-success { background: rgba(16, 185, 129, 0.15); color: var(--success); border-color: rgba(16, 185, 129, 0.3); }
+    .btn-success:hover { background: var(--success); color: white; }
+
+    .input, .form-control {
+      background: rgba(0, 0, 0, 0.2); border: 1px solid var(--panel-border);
+      border-radius: 0.5rem; color: var(--text-main);
+      padding: 0.6rem 0.75rem; font-family: 'Inter', sans-serif;
+      font-size: 0.875rem; transition: all 0.2s; width: 100%;
+    }
+    .input:focus, .form-control:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-transparent); }
+    select.form-control { cursor: pointer; }
+
+    .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
+    .form-group label { font-size: 0.8rem; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+
+    .json-editor {
+      width: 100%; min-height: 120px;
+      background: rgba(0, 0, 0, 0.3); border: 1px solid var(--panel-border);
+      border-radius: 0.5rem; color: #e2e8f0; padding: 1rem;
+      font-family: 'Fira Code', monospace; font-size: 0.8rem; line-height: 1.5;
+      resize: vertical; transition: all 0.2s;
+    }
+    .json-editor:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-transparent); }
+
+    .control-row { display: flex; gap: 0.75rem; align-items: center; }
+    .controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+    .control-card { background: var(--card-bg); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 0.75rem; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
+    .control-card-title { font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+
+    /* ─── Mock Editor Layout ─── */
+    .mocks-layout { display: grid; grid-template-columns: 280px 1fr; gap: 1.5rem; height: calc(100vh - 12rem); }
+
+    .mocks-list-panel {
+      background: var(--panel-bg); border: 1px solid var(--panel-border);
+      border-radius: 1rem; backdrop-filter: blur(12px);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .mocks-list-header { padding: 1rem; border-bottom: 1px solid var(--panel-border); display: flex; justify-content: space-between; align-items: center; }
+    .mocks-list { flex: 1; overflow-y: auto; padding: 0.5rem; }
+    .mock-group { margin-bottom: 0.75rem; }
+    .mock-group-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); padding: 0.4rem 0.75rem; font-weight: 600; }
+    .mock-item {
+      padding: 0.6rem 0.75rem; border-radius: 0.5rem; cursor: pointer;
+      font-size: 0.8rem; margin-bottom: 0.15rem; transition: all 0.15s;
+      display: flex; flex-direction: column; align-items: flex-start; gap: 0.25rem;
+      border-left: 3px solid transparent;
+    }
+    .mock-item:hover { background: rgba(255, 255, 255, 0.05); }
+    .mock-item.selected { background: var(--accent-transparent); border-left-color: var(--accent); }
+    .mock-item-name { white-space: normal; word-break: break-word; line-height: 1.3; margin-right: 0.5rem; }
+    .mock-item-badge { font-size: 0.65rem; padding: 0.1rem 0.4rem; border-radius: 4px; background: rgba(255,255,255,0.06); color: var(--text-muted); font-weight: 500; flex-shrink: 0; }
+    .mock-item.selected .mock-item-badge { color: var(--accent); background: rgba(99, 102, 241, 0.2); }
+
+    .mock-editor-panel {
+      background: var(--panel-bg); border: 1px solid var(--panel-border);
+      border-radius: 1rem; backdrop-filter: blur(12px);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .editor-header {
+      padding: 0.75rem 1.5rem; border-bottom: 1px solid var(--panel-border);
+      display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
+    }
+    .editor-body { flex: 1; overflow-y: auto; padding: 1.5rem; }
+
+    /* ─── Wizard Stepper ─── */
+    .wizard-stepper {
+      display: flex; align-items: center; gap: 0; margin-bottom: 1.5rem;
+      background: rgba(0,0,0,0.15); border-radius: 0.75rem; padding: 0.5rem; overflow-x: auto;
+    }
+    .wizard-step {
+      display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem;
+      font-size: 0.8rem; font-weight: 500; color: var(--text-muted);
+      border-radius: 0.5rem; cursor: pointer; transition: all 0.2s; white-space: nowrap;
+    }
+    .wizard-step:hover { color: var(--text-main); }
+    .wizard-step.active { background: var(--accent); color: white; }
+    .wizard-step.done { color: var(--success); }
+    .wizard-step .step-num {
+      width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 0.7rem; font-weight: 700; background: rgba(255,255,255,0.1); flex-shrink: 0;
+    }
+    .wizard-step.active .step-num { background: rgba(255,255,255,0.25); }
+    .wizard-step.done .step-num { background: rgba(16, 185, 129, 0.3); }
+    .wizard-step-divider { width: 24px; height: 1px; background: rgba(255,255,255,0.1); flex-shrink: 0; }
+
+    .wizard-pane { display: none; flex-direction: column; gap: 1.25rem; animation: fadeIn 0.2s ease; }
+    .wizard-pane.active { display: flex; }
+
+    .wizard-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--panel-border); }
+
+    /* ─── Pair card (subscribe/unsubscribe sections) ─── */
+    .pair-card {
+      background: rgba(0,0,0,0.15); border: 1px solid var(--panel-border);
+      border-radius: 0.75rem; padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;
+    }
+    .pair-card-header { display: flex; justify-content: space-between; align-items: center; }
+    .pair-card-title { font-size: 0.85rem; font-weight: 600; }
+    .pair-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+    /* ─── Event card ─── */
+    .event-card {
+      background: rgba(0,0,0,0.15); border: 1px solid var(--panel-border);
+      border-radius: 0.75rem; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem;
+    }
+    .event-card-header { display: flex; justify-content: space-between; align-items: center; }
+
+    /* ─── Randomizer table ─── */
+    .rnd-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    .rnd-table th { padding: 0.5rem; text-align: left; color: var(--text-muted); font-weight: 500; border-bottom: 1px solid var(--panel-border); }
+    .rnd-table td { padding: 0.4rem 0.5rem; }
+    .rnd-table input, .rnd-table select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--panel-border); color: var(--text-main); padding: 0.35rem 0.5rem; border-radius: 0.35rem; font-size: 0.78rem; font-family: inherit; }
+    .rnd-table input:focus, .rnd-table select:focus { outline: none; border-color: var(--accent); }
+
+    /* ─── Toggle ─── */
+    .toggle-label { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; font-size: 0.875rem; }
+    .toggle-track {
+      width: 40px; height: 22px; border-radius: 11px;
+      background: rgba(255,255,255,0.12); position: relative; transition: background 0.2s; flex-shrink: 0;
+    }
+    .toggle-track::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: white; transition: transform 0.2s;
+    }
+    .toggle-input { display: none; }
+    .toggle-input:checked + .toggle-track { background: var(--accent); }
+    .toggle-input:checked + .toggle-track::after { transform: translateX(18px); }
+
+    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem; color: var(--text-muted); text-align: center; gap: 0.75rem; }
+    .empty-state i { font-size: 3rem; opacity: 0.3; }
+
+    /* ─── Variables hint ─── */
+    .vars-hint {
+      background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.15);
+      border-radius: 0.5rem; padding: 0.6rem 0.8rem; font-size: 0.75rem; color: var(--text-muted);
+    }
+    .vars-hint code { background: rgba(0,0,0,0.3); padding: 0.1rem 0.35rem; border-radius: 3px; color: var(--accent); font-family: 'Fira Code', monospace; font-size: 0.72rem; }
+
+    /* ─── Toast ─── */
+    .toast-container { position: fixed; bottom: 2rem; right: 2rem; display: flex; flex-direction: column; gap: 0.75rem; z-index: 100; }
+    .toast {
+      background: var(--nav-bg); backdrop-filter: blur(12px); border: 1px solid var(--panel-border);
+      padding: 1rem 1.25rem; border-radius: 0.5rem; box-shadow: var(--shadow-lg);
+      display: flex; align-items: center; gap: 0.75rem;
+      animation: slideIn 0.3s ease forwards; opacity: 0; transform: translateX(100%);
+    }
+    .toast.success i { color: var(--success); }
+    .toast.error i { color: var(--danger); }
+    @keyframes slideIn { to { opacity: 1; transform: translateX(0); } }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo">
+      <i class="ph-fill ph-plugs-connected"></i>
+      WebSocket Mock Dashboard
+    </div>
+    <div class="status-indicator disconnected" id="ws-status">
+      <div class="pulse"></div>
+      <span id="ws-status-text">Disconnected</span>
+    </div>
+  </header>
+
+  <div class="app-container">
+    <aside class="sidebar">
+      <a href="#" class="nav-item active" data-target="monitor">
+        <i class="ph ph-activity"></i> Monitor
+      </a>
+      <a href="#" class="nav-item" data-target="mocks">
+        <i class="ph ph-code-block"></i> Mock Editor
+      </a>
+    </aside>
+
+    <main class="content-area">
+
+      <!-- ═══════════ MONITOR ═══════════ -->
+      <section id="monitor" class="section active">
+        <h2 class="section-title">System Monitor</h2>
+
+        <!-- Global Speed Control -->
+        <div class="panel" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem;">
+          <div class="panel-title" style="margin: 0;">
+            <i class="ph ph-gauge"></i> Global Tick Rate Multiplier
+          </div>
+          <div style="display: flex; gap: 1rem; align-items: center;">
+            <span style="font-size: 0.875rem; color: var(--text-muted);">Current: <strong id="current-multiplier" style="color: var(--accent); font-size: 1rem;">1x</strong></span>
+            <div style="width: 1px; height: 24px; background: var(--panel-border);"></div>
+            <input type="number" id="input-multiplier" class="form-control" style="width: 80px;" value="1" min="0.1" step="0.1" placeholder="e.g. 10">
+            <button class="btn btn-primary btn-sm" onclick="sendCommand('global', 'set_tick_multiplier', document.getElementById('input-multiplier').value)">
+              <i class="ph ph-lightning"></i> Apply
+            </button>
+          </div>
+        </div>
+
+        <!-- Gorilla Active Connections Panel -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <i class="ph ph-users"></i> Gorilla Active Connections (<span id="gorilla-count">0</span>)
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+              <button class="btn btn-danger btn-sm" onclick="sendCommand('gorilla','close_all','')">
+                <i class="ph ph-x-circle"></i> Disconnect All
+              </button>
+              <button class="btn btn-danger btn-sm" onclick="sendCommand('gorilla','simulate_peer_closed','')">
+                <i class="ph ph-arrow-square-out"></i> Peer Closed
+              </button>
+            </div>
+          </div>
+          <div class="connection-list" id="gorilla-list"></div>
+        </div>
+
+        <!-- Centrifugo Public Channels Panel -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <i class="ph ph-globe"></i> Centrifugo Public Channels (<span id="cf-pub-count">0</span>)
+            </div>
+            <button class="btn btn-danger btn-sm" onclick="sendCommand('centrifugo','disconnect_public','')">
+              <i class="ph ph-x-circle"></i> Disconnect All
+            </button>
+          </div>
+          <div class="connection-list" id="cf-public-list"></div>
+        </div>
+
+        <!-- Centrifugo Private Channels Panel -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <i class="ph ph-lock-key"></i> Centrifugo Private Channels (<span id="cf-priv-count">0</span>)
+            </div>
+            <button class="btn btn-danger btn-sm" onclick="sendCommand('centrifugo','disconnect_private','')">
+              <i class="ph ph-x-circle"></i> Disconnect All
+            </button>
+          </div>
+          <div class="connection-list" id="cf-private-list"></div>
+        </div>
+      </section>
+
+      <!-- ═══════════ MOCK EDITOR ═══════════ -->
+      <section id="mocks" class="section">
+        <h2 class="section-title">Mock Editor</h2>
+        <div class="mocks-layout">
+          <!-- Left Panel: connections list -->
+          <div class="mocks-list-panel">
+            <div class="mocks-list-header">
+              <span style="font-weight: 600;">Connections</span>
+              <button class="btn btn-sm" onclick="createNewConnection()"><i class="ph ph-plus"></i></button>
+            </div>
+            <div class="mocks-list" id="conn-list-container"></div>
+          </div>
+
+          <!-- Right Panel: wizard editor -->
+          <div class="mock-editor-panel">
+            <div class="editor-header">
+              <div style="font-weight: 600;" id="editor-title">Select a connection to edit</div>
+              <div style="display: flex; gap: 0.5rem;">
+                <button class="btn btn-danger btn-sm" id="btn-delete-conn" style="display:none;" onclick="deleteCurrentConnection()">
+                  <i class="ph ph-trash"></i> Delete
+                </button>
+              </div>
+            </div>
+            <div class="editor-body" id="editor-body">
+              <div class="empty-state" id="editor-empty">
+                <i class="ph ph-cursor-click"></i>
+                <div>Select a connection from the left panel, or create a new one.</div>
+              </div>
+              <div id="editor-wizard" style="display:none;">
+                <!-- Stepper -->
+                <div class="wizard-stepper" id="wizard-stepper"></div>
+
+                <!-- Step 1: Connection Setup -->
+                <div class="wizard-pane" data-step="1">
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                      <label>Connection Type</label>
+                      <select id="w-category" class="form-control" onchange="onCategoryChange()">
+                        <option value="gorilla">Legacy WebSocket (Gorilla)</option>
+                        <option value="centrifugo">Centrifugo</option>
+                      </select>
+                    </div>
+                    <div class="form-group" id="w-path-group">
+                      <label>WebSocket URL Path</label>
+                      <input type="text" id="w-path" class="form-control" placeholder="/ws/v3/coin-data/price">
+                    </div>
+                    <div class="form-group" id="w-channel-group" style="display:none;">
+                      <label>Channel Name (pattern)</label>
+                      <input type="text" id="w-channel" class="form-control" placeholder="price:coin:*">
+                    </div>
+                    <div class="form-group" id="w-chantype-group" style="display:none;">
+                      <label>Channel Type</label>
+                      <select id="w-chantype" class="form-control">
+                        <option value="public">Public</option>
+                        <option value="private">Private</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label>Description</label>
+                    <input type="text" id="w-desc" class="form-control" placeholder="e.g., Price V3 — Futures coin price update">
+                  </div>
+                  <div class="form-group">
+                    <label>Connection ID</label>
+                    <input type="text" id="w-id" class="form-control" placeholder="gorilla-price-v3">
+                  </div>
+                  <label class="toggle-label" style="margin-top: 0.25rem;">
+                    <input type="checkbox" class="toggle-input" id="w-enabled" checked>
+                    <div class="toggle-track"></div>
+                    Enabled
+                  </label>
+                </div>
+
+                <!-- Step 2: Subscribe -->
+                <div class="wizard-pane" data-step="2">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="font-size: 1rem;">Subscribe Request / Response</h3>
+                  </div>
+                  <div id="w-subscribe-pairs"></div>
+                </div>
+
+                <!-- Step 3: Unsubscribe -->
+                <div class="wizard-pane" data-step="3">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="font-size: 1rem;">Unsubscribe Request / Response</h3>
+                  </div>
+                  <div id="w-unsubscribe-pairs"></div>
+                </div>
+
+                <!-- Step 4: Ping/Pong -->
+                <div class="wizard-pane" data-step="4">
+                  <h3 style="font-size: 1rem;">Ping / Pong Configuration</h3>
+                  <label class="toggle-label">
+                    <input type="checkbox" class="toggle-input" id="w-ping-enabled" onchange="togglePingSection()">
+                    <div class="toggle-track"></div>
+                    Enable Ping/Pong
+                  </label>
+                  <div id="w-ping-section" style="display: none; margin-top: 0.5rem;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                      <div class="form-group">
+                        <label>Ping Message</label>
+                        <input type="text" id="w-ping-msg" class="form-control" placeholder="Ping">
+                      </div>
+                      <div class="form-group">
+                        <label>Pong Response</label>
+                        <input type="text" id="w-pong-msg" class="form-control" placeholder="Pong">
+                      </div>
+                    </div>
+                    <label class="toggle-label">
+                      <input type="checkbox" class="toggle-input" id="w-ping-json">
+                      <div class="toggle-track"></div>
+                      Messages are JSON format
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Step 5: Periodic Events -->
+                <div class="wizard-pane" data-step="5">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="font-size: 1rem;">Periodic Server Events</h3>
+                    <button class="btn btn-sm" onclick="addPeriodicEvent()"><i class="ph ph-plus"></i> Add Event</button>
+                  </div>
+                  <div class="vars-hint">
+                    <strong>Available Variables:</strong> Use <code>{{asset_id}}</code>, <code>{{quote_currency}}</code>, or any field name from the subscribe request JSON in your templates. For Centrifugo, <code>{{arg_1}}</code> is the first wildcard match.
+                  </div>
+                  <div id="w-periodic-events"></div>
+                </div>
+
+                <!-- Navigation -->
+                <div class="wizard-nav">
+                  <button class="btn" id="btn-prev" onclick="wizardPrev()"><i class="ph ph-arrow-left"></i> Back</button>
+                  <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn btn-success" onclick="saveConnection()"><i class="ph ph-floppy-disk"></i> Save</button>
+                    <button class="btn btn-primary" id="btn-next" onclick="wizardNext()">Next <i class="ph ph-arrow-right"></i></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast-container" id="toast-container"></div>
+
+<script>
+// ──────────────────────────────────────
+//  STATE
+// ──────────────────────────────────────
+let connections = {};          // fetched from API
+let selectedConnId = null;
+let currentStep = 1;
+const WIZARD_STEPS_GORILLA = [
+  { id: 1, name: 'Setup', pane: 1 },
+  { id: 2, name: 'Subscribe', pane: 2 },
+  { id: 3, name: 'Unsubscribe', pane: 3 },
+  { id: 4, name: 'Ping/Pong', pane: 4 },
+  { id: 5, name: 'Events', pane: 5 }
+];
+const WIZARD_STEPS_CENTRIFUGO = [
+  { id: 1, name: 'Setup', pane: 1 },
+  { id: 5, name: 'Events', pane: 5 } // Maps visually to Step 2, but targets Pane 5
+];
+
+// ──────────────────────────────────────
+//  NAV
+// ──────────────────────────────────────
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', (e) => {
+    e.preventDefault();
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    item.classList.add('active');
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.getElementById(item.dataset.target).classList.add('active');
+    if (item.dataset.target === 'mocks') loadConnections();
+  });
+});
+
+// ──────────────────────────────────────
+//  MONITOR (WebSocket real-time)
+// ──────────────────────────────────────
+let statusWs = null;
+function connectStatusWS() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  statusWs = new WebSocket(`${proto}://${location.host}/api/ws/status`);
+  statusWs.onopen = () => {
+    document.getElementById('ws-status').classList.remove('disconnected');
+    document.getElementById('ws-status-text').textContent = 'Connected';
+  };
+  statusWs.onclose = () => {
+    document.getElementById('ws-status').classList.add('disconnected');
+    document.getElementById('ws-status-text').textContent = 'Disconnected';
+    setTimeout(connectStatusWS, 3000);
+  };
+  statusWs.onmessage = (e) => {
+    try { updateMonitor(JSON.parse(e.data)); } catch {}
+  };
+}
+connectStatusWS();
+
+function updateMonitor(data) {
+  if (data.tick_multiplier) {
+    document.getElementById('current-multiplier').textContent = data.tick_multiplier + 'x';
+  }
+
+  const g = data.gorilla || {};
+  const c = data.centrifugo || {};
+
+  const conns = g.connections || [];
+  document.getElementById('gorilla-count').textContent = conns.length;
+
+  // Gorilla connections list
+  const gList = document.getElementById('gorilla-list');
+  if (!conns.length) {
+    gList.innerHTML = '<div style="color: var(--text-muted); font-size: 0.875rem; padding: 1rem;">No active connections</div>';
+  } else {
+    conns.sort((a, b) => (a.config_id || '').localeCompare(b.config_id || ''));
+    gList.innerHTML = conns.map(c => `
+      <div class="connection-item">
+        <div class="conn-header">
+          <div>
+            <span class="conn-id" style="background:var(--success); color:white;">${c.config_id || 'Unknown Config'}</span>
+            <span class="conn-endpoint" style="margin-left: 0.5rem; margin-right: 0.5rem;">${c.endpoint}</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <span class="conn-time">${c.duration}</span>
+            <button class="btn btn-danger btn-sm" onclick="sendCommand('gorilla', 'close_connection', '${c.conn_id}')">
+              <i class="ph ph-trash"></i> Disconnect
+            </button>
+          </div>
+        </div>
+        <div style="font-family: 'Fira Code', monospace; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+          UUID: ${c.conn_id} &bull; <span style="font-weight: normal; color: var(--text-muted);">${c.sub_count} pair(s)</span>
+        </div>
+        <div class="subs-list" style="margin-top: 0.5rem;">
+          ${(c.active_subs || []).sort().map(s => {
+            const displayStr = s.includes(':') ? s.substring(s.indexOf(':') + 1) : s;
+            return `<span class="sub-badge"><span class="live-dot"></span>${truncate(displayStr, 40)}</span>`;
+          }).join('')}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Centrifugo Channels
+  const channels = c.channels || [];
+  const pubs = channels.filter(ch => ch.type === 'public');
+  const privs = channels.filter(ch => ch.type === 'private');
+
+  document.getElementById('cf-pub-count').textContent = pubs.length;
+  document.getElementById('cf-priv-count').textContent = privs.length;
+
+  const pubList = document.getElementById('cf-public-list');
+  const privList = document.getElementById('cf-private-list');
+
+  pubList.innerHTML = pubs.length ? pubs.map(ch => `
+    <div class="connection-item">
+      <div class="conn-header">
+        <span class="conn-endpoint">${ch.channel}</span>
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <span class="sub-badge">${ch.sub_count} sub(s)</span>
+          <button class="btn btn-danger btn-sm" onclick="sendCommand('centrifugo', 'disconnect_channel', '${ch.channel}')">
+            <i class="ph ph-trash"></i> Disconnect
+          </button>
+        </div>
+      </div>
+    </div>
+  `).join('') : '<div style="color: var(--text-muted); font-size: 0.875rem;">No public channels</div>';
+
+  privList.innerHTML = privs.length ? privs.map(ch => `
+    <div class="connection-item">
+      <div class="conn-header">
+        <span class="conn-endpoint">${ch.channel}</span>
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <span class="sub-badge">${ch.sub_count} sub(s)</span>
+          <button class="btn btn-danger btn-sm" onclick="sendCommand('centrifugo', 'disconnect_channel', '${ch.channel}')">
+            <i class="ph ph-trash"></i> Disconnect
+          </button>
+        </div>
+      </div>
+    </div>
+  `).join('') : '<div style="color: var(--text-muted); font-size: 0.875rem;">No private channels</div>';
+}
+
+function truncate(s, n) { return s && s.length > n ? s.substring(0, n) + '…' : s; }
+
+// ──────────────────────────────────────
+//  MOCK EDITOR — Connection List
+// ──────────────────────────────────────
+async function loadConnections() {
+  try {
+    const res = await fetch('/api/connections');
+    connections = await res.json();
+    renderConnectionList();
+  } catch (err) {
+    showToast('Failed to load connections', 'error');
+  }
+}
+
+function renderConnectionList() {
+  const container = document.getElementById('conn-list-container');
+  const gorilla = [];
+  const centrifugo = [];
+
+  for (const [id, c] of Object.entries(connections)) {
+    (c.category === 'centrifugo' ? centrifugo : gorilla).push({ id, ...c });
+  }
+
+  let html = '';
+  if (gorilla.length) {
+    html += `<div class="mock-group"><div class="mock-group-title">GORILLA (Legacy WS)</div>`;
+    gorilla.forEach(c => {
+      html += `<div class="mock-item ${selectedConnId === c.id ? 'selected' : ''}" onclick="selectConnection('${c.id}')">
+        <span class="mock-item-name">${c.description || c.path || c.id}</span>
+        <span class="mock-item-badge">${c.path || ''}</span>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+  if (centrifugo.length) {
+    html += `<div class="mock-group"><div class="mock-group-title">CENTRIFUGO</div>`;
+    centrifugo.forEach(c => {
+      html += `<div class="mock-item ${selectedConnId === c.id ? 'selected' : ''}" onclick="selectConnection('${c.id}')">
+        <span class="mock-item-name">${c.description || c.channel_name || c.id}</span>
+        <span class="mock-item-badge">${c.channel_type || ''}</span>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+  if (!gorilla.length && !centrifugo.length) {
+    html = '<div style="color: var(--text-muted); font-size: 0.8rem; padding: 1rem; text-align: center;">No connections configured</div>';
+  }
+  container.innerHTML = html;
+}
+
+// ──────────────────────────────────────
+//  MOCK EDITOR — Select / Create
+// ──────────────────────────────────────
+function selectConnection(id) {
+  selectedConnId = id;
+  renderConnectionList();
+  const conn = connections[id];
+  if (!conn) return;
+
+  document.getElementById('editor-empty').style.display = 'none';
+  document.getElementById('editor-wizard').style.display = 'block';
+  document.getElementById('editor-title').textContent = conn.description || conn.id;
+  document.getElementById('btn-delete-conn').style.display = '';
+
+  // Populate Step 1
+  document.getElementById('w-category').value = conn.category || 'gorilla';
+  document.getElementById('w-id').value = conn.id || id;
+  document.getElementById('w-desc').value = conn.description || '';
+  document.getElementById('w-enabled').checked = conn.enabled !== false;
+  document.getElementById('w-path').value = conn.path || '';
+  document.getElementById('w-channel').value = conn.channel_name || '';
+  document.getElementById('w-chantype').value = conn.channel_type || 'public';
+  onCategoryChange();
+
+  // Populate Step 2: subscribe
+  renderPairs('w-subscribe-pairs', conn.subscribe_requests || [], 'subscribe');
+
+  // Populate Step 3: unsubscribe
+  renderPairs('w-unsubscribe-pairs', conn.unsubscribe_requests || [], 'unsubscribe');
+
+  // Populate Step 4: ping
+  if (conn.ping_request) {
+    document.getElementById('w-ping-enabled').checked = true;
+    document.getElementById('w-ping-section').style.display = '';
+    document.getElementById('w-ping-msg').value = conn.ping_request.ping_message || '';
+    document.getElementById('w-pong-msg').value = conn.ping_request.pong_message || '';
+    document.getElementById('w-ping-json').checked = conn.ping_request.is_json || false;
+  } else {
+    document.getElementById('w-ping-enabled').checked = false;
+    document.getElementById('w-ping-section').style.display = 'none';
+    document.getElementById('w-ping-msg').value = '';
+    document.getElementById('w-pong-msg').value = '';
+    document.getElementById('w-ping-json').checked = false;
+  }
+
+  // Populate Step 5: periodic events
+  renderPeriodicEvents(conn.periodic_events || []);
+
+  goToStep(1);
+}
+
+function createNewConnection() {
+  selectedConnId = '__new__';
+  renderConnectionList();
+
+  document.getElementById('editor-empty').style.display = 'none';
+  document.getElementById('editor-wizard').style.display = 'block';
+  document.getElementById('editor-title').textContent = 'New Connection';
+  document.getElementById('btn-delete-conn').style.display = 'none';
+
+  document.getElementById('w-category').value = 'gorilla';
+  document.getElementById('w-id').value = '';
+  document.getElementById('w-desc').value = '';
+  document.getElementById('w-enabled').checked = true;
+  document.getElementById('w-path').value = '';
+  document.getElementById('w-channel').value = '';
+  document.getElementById('w-chantype').value = 'public';
+  onCategoryChange();
+
+  renderPairs('w-subscribe-pairs', [], 'subscribe');
+  renderPairs('w-unsubscribe-pairs', [], 'unsubscribe');
+
+  document.getElementById('w-ping-enabled').checked = false;
+  document.getElementById('w-ping-section').style.display = 'none';
+  document.getElementById('w-ping-msg').value = 'Ping';
+  document.getElementById('w-pong-msg').value = 'Pong';
+  document.getElementById('w-ping-json').checked = false;
+
+  document.getElementById('w-periodic-events').innerHTML = '';
+
+  goToStep(1);
+}
+
+// ──────────────────────────────────────
+//  WIZARD STEPPER
+// ──────────────────────────────────────
+function goToStep(stepId) {
+  const steps = getActiveSteps();
+  const targetStepIndex = steps.findIndex(s => s.id === stepId);
+  const currentStepIndex = steps.findIndex(s => s.id === currentStep);
+  
+  // Validation for moving forward
+  if (targetStepIndex > currentStepIndex) {
+    if (currentStep === 1) {
+      if (!document.getElementById('w-id').value.trim()) return showToast('Connection ID is required.', 'error');
+      if (document.getElementById('w-category').value === 'gorilla' && !document.getElementById('w-path').value.trim()) return showToast('WebSocket URL Path is required.', 'error');
+      if (document.getElementById('w-category').value === 'centrifugo' && !document.getElementById('w-channel').value.trim()) return showToast('Channel Name is required.', 'error');
+    }
+    if (currentStep === 2) {
+      const pairs = collectPairs('w-subscribe-pairs');
+      if (pairs.some(p => p.request_template === null || p.response_template === null)) return showToast('Invalid JSON in Subscribe step.', 'error');
+    }
+    // ... logic for other steps
+  }
+
+  currentStep = stepId;
+  renderStepper();
+  
+  document.querySelectorAll('.wizard-pane').forEach(p => p.classList.remove('active'));
+  
+  const stepObj = steps.find(s => s.id === stepId);
+  document.querySelector(`.wizard-pane[data-step="${stepObj.pane}"]`).classList.add('active');
+  
+  document.getElementById('btn-prev').style.visibility = targetStepIndex === 0 ? 'hidden' : 'visible';
+  document.getElementById('btn-next').style.display = targetStepIndex === steps.length - 1 ? 'none' : '';
+}
+
+function wizardNext() {
+  const steps = getActiveSteps();
+  const idx = steps.findIndex(s => s.id === currentStep);
+  if (idx < steps.length - 1) goToStep(steps[idx + 1].id);
+}
+
+function wizardPrev() {
+  const steps = getActiveSteps();
+  const idx = steps.findIndex(s => s.id === currentStep);
+  if (idx > 0) goToStep(steps[idx - 1].id);
+}
+
+function renderStepper() {
+  const steps = getActiveSteps();
+  const el = document.getElementById('wizard-stepper');
+  
+  let html = '';
+  steps.forEach((step, idx) => {
+    const stepNum = idx + 1;
+    const isCurrent = step.id === currentStep;
+    // Step is "done" if its ID appears before currentStep's ID in the array
+    const currentIndex = steps.findIndex(s => s.id === currentStep);
+    const isDone = idx < currentIndex;
+    
+    const cls = isCurrent ? 'active' : (isDone ? 'done' : '');
+    html += `<div class="wizard-step ${cls}" onclick="goToStep(${step.id})">
+      <span class="step-num">${isDone ? '✓' : stepNum}</span> ${step.name}
+    </div>`;
+    
+    if (idx < steps.length - 1) html += `<div class="wizard-step-divider"></div>`;
+  });
+  el.innerHTML = html;
+}
+
+function getActiveSteps() {
+  const cat = document.getElementById('w-category').value;
+  return cat === 'centrifugo' ? WIZARD_STEPS_CENTRIFUGO : WIZARD_STEPS_GORILLA;
+}
+
+// ──────────────────────────────────────
+//  STEP 1 helpers
+// ──────────────────────────────────────
+function onCategoryChange() {
+  const cat = document.getElementById('w-category').value;
+  document.getElementById('w-path-group').style.display = cat === 'gorilla' ? '' : 'none';
+  document.getElementById('w-channel-group').style.display = cat === 'centrifugo' ? '' : 'none';
+  document.getElementById('w-chantype-group').style.display = cat === 'centrifugo' ? '' : 'none';
+  
+  if (cat === 'centrifugo') {
+    document.getElementById('w-channel').placeholder = 'price:coin:{{.asset_id}}/{{.quote_currency}}';
+  }
+
+  // Update the variables hint dynamically based on category
+  const hintEl = document.querySelector('.vars-hint');
+  if (cat === 'centrifugo') {
+    hintEl.innerHTML = `<strong>Available Variables:</strong> Use <code>{{.asset_id}}</code>, <code>{{.quote_currency}}</code>, etc. as defined in your Channel Name pattern.`;
+  } else {
+    hintEl.innerHTML = `<strong>Available Variables:</strong> Use <code>{{.asset_id}}</code>, <code>{{.quote_currency}}</code>, or any field name from the subscribe request JSON in your templates.`;
+  }
+
+  currentStep = 1; 
+  renderStepper();
+  goToStep(1);
+}
+
+// ──────────────────────────────────────
+//  STEP 2 & 3 — Req/Res Pairs
+// ──────────────────────────────────────
+function renderPairs(containerId, pairs, type) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  // Enforce exactly 1 pair
+  const pair = pairs.length > 0 ? pairs[0] : { description: '', request_template: '{}', response_template: '{}' };
+  container.appendChild(createPairCard(pair, type));
+}
+
+function createPairCard(pair, type) {
+  const card = document.createElement('div');
+  card.className = 'pair-card';
+  card.style.marginBottom = '0.75rem';
+
+  const subKeyHtml = type === 'subscribe' 
+    ? `<input class="form-control" style="width: 300px;" value="${escHtml(pair.sub_key || '')}" placeholder="SubKey Template e.g. {{.asset_id}}" data-field="subkey">` 
+    : `<input type="hidden" data-field="subkey" value="">`;
+
+  card.innerHTML = `
+    <div class="pair-card-header" style="flex-wrap: wrap; gap: 0.5rem; justify-content: flex-start;">
+      <input class="form-control" style="width: 250px;" value="${escHtml(pair.description || '')}" placeholder="Pair description" data-field="desc">
+      ${subKeyHtml}
+    </div>
+    <div class="pair-grid" style="margin-top: 0.75rem;">
+      <div class="form-group">
+        <label>Request Template (what client sends)</label>
+        <textarea class="json-editor" data-field="request" rows="6">${formatJSON(pair.request_template)}</textarea>
+      </div>
+      <div class="form-group">
+        <label>Response Template (what server replies)</label>
+        <textarea class="json-editor" data-field="response" rows="6">${formatJSON(pair.response_template)}</textarea>
+      </div>
+    </div>
+  `;
+  return card;
+}
+
+// ──────────────────────────────────────
+//  STEP 4 — Ping/Pong
+// ──────────────────────────────────────
+function togglePingSection() {
+  document.getElementById('w-ping-section').style.display = document.getElementById('w-ping-enabled').checked ? '' : 'none';
+}
+
+// ──────────────────────────────────────
+//  STEP 5 — Periodic Events
+// ──────────────────────────────────────
+function renderPeriodicEvents(events) {
+  const container = document.getElementById('w-periodic-events');
+  container.innerHTML = '';
+  events.forEach((evt, idx) => {
+    container.appendChild(createEventCard(evt, idx));
+  });
+  if (!events.length) {
+    container.innerHTML = '<div style="color: var(--text-muted); font-size: 0.8rem; padding: 1rem; text-align: center;">No periodic events. Click "+ Add Event" to add one.</div>';
+  }
+}
+
+function createEventCard(evt, idx) {
+  const card = document.createElement('div');
+  card.className = 'event-card';
+  card.style.marginBottom = '0.75rem';
+
+  // Attempt to parse the template to extract base values for the UI
+  let parsedTpl = {};
+  try {
+    const tplStr = typeof evt.template === 'string' ? evt.template : JSON.stringify(evt.template || {});
+    const safeTpl = tplStr.replace(/:\s*(\{\{.*?\}\})/g, ': "$1"');
+    parsedTpl = JSON.parse(safeTpl);
+  } catch (e) {}
+
+  // Build randomizer rows
+  let rndRows = '';
+  const randomizers = evt.randomizers || {};
+  for (const [field, rule] of Object.entries(randomizers)) {
+    // Extract base value dynamically from the template so the user can see it
+    const baseVal = getValByPath(parsedTpl, field);
+    if (baseVal !== undefined) rule.base_val = baseVal;
+    
+    rndRows += createRandomizerRow(field, rule);
+  }
+
+  card.innerHTML = `
+    <div class="event-card-header">
+      <input class="form-control" style="max-width: 300px;" value="${escHtml(evt.description || '')}" placeholder="Event description" data-field="evt-desc">
+      <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <div class="form-group" style="flex-direction: row; align-items: center; gap: 0.5rem;">
+          <label style="white-space: nowrap; margin: 0;">Rate (ms):</label>
+          <input type="number" class="form-control" style="width: 100px;" value="${evt.rate_ms || 0}" data-field="evt-rate" placeholder="0 = off">
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="this.closest('.event-card').remove()"><i class="ph ph-trash"></i></button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Response JSON Template</label>
+      <textarea class="json-editor" data-field="evt-template" rows="8">${formatJSON(evt.template)}</textarea>
+    </div>
+    <div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <label style="font-size: 0.8rem; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em;">Randomizer Rules</label>
+        <div style="display: flex; gap: 0.5rem;">
+          <button class="btn btn-sm btn-success" onclick="generateRules(this)"><i class="ph ph-magic-wand"></i> Generate Rules from Template</button>
+          <button class="btn btn-sm" onclick="addRndRow(this)"><i class="ph ph-plus"></i> Add Rule</button>
+        </div>
+      </div>
+      <div style="overflow-x: auto; border: 1px solid var(--panel-border); border-radius: 0.5rem; background: rgba(0,0,0,0.15);">
+        <table class="rnd-table">
+          <thead>
+            <tr>
+              <th>Field Path</th>
+              <th>Template Value</th>
+              <th>Type</th>
+              <th>Configuration</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody data-rnd-body>
+            ${rndRows}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+  return card;
+}
+
+function createRandomizerRow(field, rule) {
+  // Array repeat heavily prioritizes Min/Max over Percentage
+  const isMinMax = rule.type === 'array_repeat' || rule.min > 0 || rule.max > 0;
+  const variationType = isMinMax ? 'minmax' : 'pct';
+  
+  // Format the base value safely
+  const baseValStr = rule.base_val !== undefined ? escHtml(String(rule.base_val)) : '';
+
+  return `<tr>
+    <td style="width: 20%;">
+      <input value="${escHtml(field)}" data-rnd="field" placeholder="e.g. data.price">
+    </td>
+    <td style="width: 20%;">
+      <input value="${baseValStr}" disabled style="background: rgba(255,255,255,0.05); color: var(--text-muted); cursor: not-allowed;" placeholder="-">
+    </td>
+    <td style="width: 20%;">
+      <select data-rnd="type" onchange="onRndTypeChange(this)">
+        <option value="int" ${rule.type === 'int' ? 'selected' : ''}>Int</option>
+        <option value="double" ${rule.type === 'double' ? 'selected' : ''}>Double</option>
+        <option value="double_string" ${rule.type === 'double_string' ? 'selected' : ''}>Double (string)</option>
+        <option value="static_string" ${rule.type === 'static_string' ? 'selected' : ''}>Static Choices</option>
+        <option value="random_string" ${rule.type === 'random_string' ? 'selected' : ''}>Random String</option>
+        <option value="timestamp" ${rule.type === 'timestamp' ? 'selected' : ''}>Timestamp (Now)</option>
+        <option value="array_repeat" ${rule.type === 'array_repeat' ? 'selected' : ''}>Array Repeat Count</option>
+        <option value="template_var" ${rule.type === 'template_var' ? 'selected' : ''}>Template Variable</option>
+      </select>
+    </td>
+    <td style="width: 35%;">
+      <div data-rnd-cfg="num" style="display: flex; gap: 0.5rem; ${['int','double','double_string','array_repeat'].includes(rule.type) ? '' : 'display:none;'}">
+        <select data-rnd="vartype" style="width: auto;" onchange="onRndVarTypeChange(this)" ${rule.type === 'array_repeat' ? 'disabled' : ''}>
+          <option value="pct" ${variationType === 'pct' ? 'selected' : ''}>± Percentage</option>
+          <option value="minmax" ${variationType === 'minmax' ? 'selected' : ''}>Min/Max</option>
+        </select>
+        <input type="number" value="${rule.percentage || ''}" data-rnd="pct" placeholder="%" style="width:70px; ${variationType === 'pct' ? '' : 'display:none;'}">
+        <div data-rnd="mm" style="display: flex; gap: 0.5rem; ${variationType === 'minmax' ? '' : 'display:none;'}">
+          <input type="number" value="${rule.min || ''}" data-rnd="min" placeholder="Min" style="width:80px">
+          <input type="number" value="${rule.max || ''}" data-rnd="max" placeholder="Max" style="width:80px">
+        </div>
+      </div>
+      <div data-rnd-cfg="static" style="${rule.type === 'static_string' ? '' : 'display:none;'}">
+        <input value="${escHtml(rule.static_val || '')}" data-rnd="static" placeholder="Comma separated, e.g., BUY,SELL">
+      </div>
+      <div data-rnd-cfg="randstr" style="color:var(--text-muted); font-size:0.75rem; ${(rule.type === 'random_string' || rule.type === 'timestamp') ? '' : 'display:none;'}">
+        No configuration needed.
+      </div>
+      <div data-rnd-cfg="tmpl" style="color:var(--accent); font-size:0.75rem; ${rule.type === 'template_var' ? '' : 'display:none;'}">
+        <i class="ph-fill ph-magic-wand"></i> Handled automatically.
+      </div>
+    </td>
+    <td style="width: 5%; text-align: right;">
+      <button class="btn btn-danger btn-sm" onclick="this.closest('tr').remove()" style="padding:0.2rem 0.4rem;"><i class="ph ph-x"></i></button>
+    </td>
+  </tr>`;
+}
+
+function onRndTypeChange(sel) {
+  const row = sel.closest('tr');
+  const type = sel.value;
+  row.querySelector('[data-rnd-cfg="num"]').style.display = ['int','double','double_string','array_repeat'].includes(type) ? 'flex' : 'none';
+  row.querySelector('[data-rnd-cfg="static"]').style.display = type === 'static_string' ? 'block' : 'none';
+  row.querySelector('[data-rnd-cfg="randstr"]').style.display = (type === 'random_string' || type === 'timestamp') ? 'block' : 'none';
+  
+  const tmplCfg = row.querySelector('[data-rnd-cfg="tmpl"]');
+  if (tmplCfg) tmplCfg.style.display = type === 'template_var' ? 'block' : 'none';
+  
+  if (type === 'array_repeat') {
+    const varType = row.querySelector('[data-rnd="vartype"]');
+    varType.value = 'minmax';
+    varType.disabled = true;
+    onRndVarTypeChange(varType);
+  } else {
+    row.querySelector('[data-rnd="vartype"]').disabled = false;
+  }
+}
+
+function onRndVarTypeChange(sel) {
+  const row = sel.closest('tr');
+  const isMinMax = sel.value === 'minmax';
+  row.querySelector('[data-rnd="pct"]').style.display = isMinMax ? 'none' : 'block';
+  row.querySelector('[data-rnd="mm"]').style.display = isMinMax ? 'flex' : 'none';
+}
+
+function generateRules(btn) {
+  const card = btn.closest('.event-card');
+  const tplVal = card.querySelector('[data-field="evt-template"]').value;
+  const tbody = card.querySelector('[data-rnd-body]');
+
+  try {
+    const safeJsonStr = tplVal.replace(/:\s*(\{\{.*?\}\})/g, ': "$1"');
+    const obj = JSON.parse(safeJsonStr);
+
+    const paths = {};
+    const traverse = (o, prefix = '') => {
+      if (Array.isArray(o)) {
+        if (o.length > 0) {
+          // It's an array: set to array_repeat with min/max configuration
+          paths[prefix || 'root'] = { type: 'array_repeat', min: 1, max: Math.max(1, o.length), base_val: `Array [size: ${o.length}]` };
+          traverse(o[0], prefix ? prefix + '.*' : '*');
+        }
+      } else if (o !== null && typeof o === 'object') {
+        for (const [k, v] of Object.entries(o)) {
+          const path = prefix ? prefix + '.' + k : k;
+          traverse(v, path);
+        }
+      } else {
+        // Field name logic
+        const isTimestamp = prefix.toLowerCase().includes('timestamp') || prefix.toLowerCase().includes('time');
+
+        if (isTimestamp) {
+          // If the field name implies it's a timestamp
+          paths[prefix] = { type: 'timestamp', base_val: o };
+        } else if (typeof o === 'string' && o.includes('{{')) {
+          // Identify it as a Template Variable
+          paths[prefix] = { type: 'template_var', base_val: o };
+        } else if (typeof o === 'number') {
+          // Distinctly separate Int and Double
+          paths[prefix] = { type: Number.isInteger(o) ? 'int' : 'double', percentage: 5, base_val: o };
+        } else if (typeof o === 'string' && !isNaN(parseFloat(o.replace(/,/g, '')))) {
+          // It's a string, but it looks exactly like a number (Double String)
+          paths[prefix] = { type: 'double_string', percentage: 5, base_val: o };
+        } else if (typeof o === 'string') {
+          // Standard text
+          paths[prefix] = { type: 'static_string', static_val: o, base_val: o };
+        }
+      }
+    };
+
+    traverse(obj);
+
+    let html = '';
+    for (const [p, rule] of Object.entries(paths)) {
+      html += createRandomizerRow(p, rule);
+    }
+
+    tbody.innerHTML = html || '<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">No primitive fields found to randomize.</td></tr>';
+  } catch (e) {
+    console.error("Template parsing error:", e);
+    showToast('Invalid JSON in template. Cannot generate rules.', 'error');
+  }
+}
+
+function addPeriodicEvent() {
+  const container = document.getElementById('w-periodic-events');
+  if (container.querySelector('div[style*="text-align: center"]')) container.innerHTML = '';
+  container.appendChild(createEventCard({ description: '', rate_ms: 1000, template: '{}', randomizers: {} }, 0));
+}
+
+function addRndRow(btn) {
+  const tbody = btn.closest('.event-card').querySelector('[data-rnd-body]');
+  tbody.insertAdjacentHTML('beforeend', createRandomizerRow('', { type: 'double_string', percentage: 5 }));
+}
+
+// ──────────────────────────────────────
+//  COLLECT & SAVE
+// ──────────────────────────────────────
+function collectPairs(containerId) {
+  const pairs = [];
+  document.querySelectorAll(`#${containerId} .pair-card`).forEach(card => {
+    const desc = card.querySelector('[data-field="desc"]').value;
+    const subKey = card.querySelector('[data-field="subkey"]').value;
+    const req = card.querySelector('[data-field="request"]').value;
+    const res = card.querySelector('[data-field="response"]').value;
+    pairs.push({
+      description: desc,
+      sub_key: subKey,
+      request_template: tryParseJSON(req),
+      response_template: tryParseJSON(res),
+    });
+  });
+  return pairs;
+}
+
+function collectEvents() {
+  const events = [];
+  document.querySelectorAll('#w-periodic-events .event-card').forEach(card => {
+    const desc = card.querySelector('[data-field="evt-desc"]').value;
+    const rate = parseInt(card.querySelector('[data-field="evt-rate"]').value) || 0;
+    const tpl = card.querySelector('[data-field="evt-template"]').value;
+
+    const randomizers = {};
+    card.querySelectorAll('[data-rnd-body] tr').forEach(row => {
+      const field = row.querySelector('[data-rnd="field"]').value.trim();
+      if (!field) return;
+      randomizers[field] = {
+        type: row.querySelector('[data-rnd="type"]').value,
+        percentage: parseFloat(row.querySelector('[data-rnd="pct"]').value) || 0,
+        min: parseFloat(row.querySelector('[data-rnd="min"]').value) || 0,
+        max: parseFloat(row.querySelector('[data-rnd="max"]').value) || 0,
+        static_val: row.querySelector('[data-rnd="static"]').value,
+      };
+    });
+
+    events.push({
+      id: 'evt-' + Math.random().toString(36).substr(2, 6),
+      description: desc,
+      rate_ms: rate,
+      template: tryParseJSON(tpl),
+      randomizers: randomizers,
+    });
+  });
+  return events;
+}
+
+async function saveConnection() {
+  const cat = document.getElementById('w-category').value;
+  const id = document.getElementById('w-id').value.trim();
+
+  if (!id) { showToast('Connection ID is required', 'error'); return; }
+
+  const subs = collectPairs('w-subscribe-pairs');
+  const unsubs = collectPairs('w-unsubscribe-pairs');
+  const evts = collectEvents();
+
+  // Automatically sync SubKey from Subscribe to Unsubscribe
+  if (subs.length > 0 && unsubs.length > 0) {
+    unsubs[0].sub_key = subs[0].sub_key;
+  }
+
+  // Validate Variables
+  const reqVars = new Set(['connection_id', 'arg_1']);
+  if (subs.length > 0 && subs[0].request_template) {
+    const traverseReq = (obj) => {
+      if (obj && typeof obj === 'object') {
+        for (const [k, v] of Object.entries(obj)) {
+          reqVars.add(k);
+          traverseReq(v);
+        }
+      }
+    };
+    traverseReq(subs[0].request_template);
+  }
+
+  const usedVars = new Set();
+  const extractVars = (str) => {
+    const matches = str.match(/\\{\\{\\.([^}]+)\\}\\}/g);
+    if (matches) {
+      matches.forEach(m => usedVars.add(m.replace(/[{}.]/g, '')));
+    }
+  };
+  if (subs.length > 0) extractVars(JSON.stringify(subs[0].response_template));
+  if (unsubs.length > 0) extractVars(JSON.stringify(unsubs[0].response_template));
+  evts.forEach(e => extractVars(JSON.stringify(e.template)));
+
+  for (const v of usedVars) {
+    if (!reqVars.has(v)) {
+      showToast(`Validation Error: Variable {{.${v}}} is used but not defined in the Subscribe Request JSON.`, 'error');
+      return;
+    }
+  }
+
+  const config = {
+    id: id,
+    description: document.getElementById('w-desc').value,
+    category: cat,
+    path: cat === 'gorilla' ? document.getElementById('w-path').value : '',
+    channel_name: cat === 'centrifugo' ? document.getElementById('w-channel').value : '',
+    channel_type: cat === 'centrifugo' ? document.getElementById('w-chantype').value : '',
+    subscribe_requests: subs,
+    unsubscribe_requests: unsubs,
+    ping_request: document.getElementById('w-ping-enabled').checked ? {
+      ping_message: document.getElementById('w-ping-msg').value,
+      pong_message: document.getElementById('w-pong-msg').value,
+      is_json: document.getElementById('w-ping-json').checked,
+    } : null,
+    periodic_events: evts,
+    enabled: document.getElementById('w-enabled').checked,
+  };
+
+  try {
+    const isNew = selectedConnId === '__new__' || !connections[id];
+    const method = isNew ? 'POST' : 'PUT';
+    const url = isNew ? '/api/connections' : `/api/connections/${id}`;
+
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text);
+    }
+
+    showToast('Connection saved! Please restart the server to take effect.', 'success');
+    selectedConnId = id;
+    await loadConnections();
+    selectConnection(id);
+  } catch (err) {
+    showToast('Save failed: ' + err.message, 'error');
+  }
+}
+
+async function deleteCurrentConnection() {
+  if (!selectedConnId || selectedConnId === '__new__') return;
+  if (!confirm('Delete this connection config?')) return;
+  try {
+    await fetch(`/api/connections/${selectedConnId}`, { method: 'DELETE' });
+    showToast('Connection deleted', 'success');
+    selectedConnId = null;
+    document.getElementById('editor-empty').style.display = '';
+    document.getElementById('editor-wizard').style.display = 'none';
+    document.getElementById('btn-delete-conn').style.display = 'none';
+    await loadConnections();
+  } catch (err) {
+    showToast('Delete failed: ' + err.message, 'error');
+  }
+}
+
+// ──────────────────────────────────────
+//  CONTROLS
+// ──────────────────────────────────────
+async function sendCommand(target, command, value) {
+  try {
+    const res = await fetch('/api/command', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target, command, value: String(value) }),
+    });
+    const data = await res.json();
+    showToast(data.message || 'Command sent', 'success');
+  } catch (err) {
+    showToast('Command failed: ' + err.message, 'error');
+  }
+}
+
+// ──────────────────────────────────────
+//  HELPERS
+// ──────────────────────────────────────
+function formatJSON(raw) {
+  if (!raw) return '{}';
+  try {
+    const obj = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    return escHtml(JSON.stringify(obj, null, 2));
+  } catch {
+    return escHtml(typeof raw === 'string' ? raw : JSON.stringify(raw));
+  }
+}
+
+function tryParseJSON(str) {
+  try { return JSON.parse(str); } catch { return str; }
+}
+
+function escHtml(s) {
+  if (typeof s !== 'string') return s;
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function showToast(msg, type = 'success') {
+  const container = document.getElementById('toast-container');
+  const icon = type === 'success' ? 'ph-check-circle' : 'ph-warning-circle';
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `<i class="ph-fill ${icon}" style="font-size: 1.25rem;"></i> ${msg}`;
+  container.appendChild(toast);
+  setTimeout(() => { toast.style.animation = 'fadeOut 0.3s ease forwards'; setTimeout(() => toast.remove(), 300); }, 3000);
+}
+
+// Helper to extract base value from a JSON object using a dot-notation path (e.g., "asks.*.price")
+function getValByPath(obj, path) {
+  if (!obj || !path) return undefined;
+  const parts = path.split('.');
+  let current = obj;
+  for (const part of parts) {
+    if (current === undefined || current === null) return undefined;
+    if (part === '*' && Array.isArray(current)) {
+      current = current[0]; // peek at the first item of the array
+    } else {
+      current = current[part];
+    }
+  }
+  return current;
+}
+
+// ──────────────────────────────────────
+//  INIT
+// ──────────────────────────────────────
+loadConnections();
+</script>
+</body>
+</html>

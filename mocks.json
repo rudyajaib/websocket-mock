@@ -1,0 +1,1128 @@
+{
+  "connections": {
+    "centrifugo-price": {
+      "id": "centrifugo-price",
+      "description": "Centrifugo Price — Real-time price channel",
+      "category": "centrifugo",
+      "path": "",
+      "channel_name": "price:coin:{{.asset_id}}/{{.quote_currency}}",
+      "channel_type": "public",
+      "subscribe_requests": [
+        {
+          "description": "",
+          "request_template": {},
+          "response_template": {}
+        }
+      ],
+      "unsubscribe_requests": [
+        {
+          "description": "",
+          "request_template": {},
+          "response_template": {}
+        }
+      ],
+      "ping_request": null,
+      "periodic_events": [
+        {
+          "id": "evt-3n4p2l",
+          "description": "Price Tick",
+          "rate_ms": 1000,
+          "template": {
+            "price": "64741.10",
+            "price_change": "-1331.2734",
+            "price_change_rate": "-2.06",
+            "scale": 2,
+            "type": "COIN",
+            "value": "{{.asset_id}}/{{.quote_currency}}"
+          },
+          "randomizers": {
+            "price": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "price_change": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "price_change_rate": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "scale": {
+              "type": "int",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "type": {
+              "type": "static_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 0,
+              "static_val": "COIN"
+            },
+            "value": {
+              "type": "template_var",
+              "min": 0,
+              "max": 0,
+              "percentage": 0,
+              "static_val": ""
+            }
+          }
+        }
+      ],
+      "enabled": true
+    },
+    "futures-margin": {
+      "id": "futures-margin",
+      "description": "Futures Margin (private)",
+      "category": "centrifugo",
+      "path": "",
+      "channel_name": "margin:coin_futures#{{.ajaib_id}}",
+      "channel_type": "private",
+      "subscribe_requests": [
+        {
+          "description": "",
+          "request_template": {},
+          "response_template": {}
+        }
+      ],
+      "unsubscribe_requests": [
+        {
+          "description": "",
+          "request_template": {},
+          "response_template": {}
+        }
+      ],
+      "ping_request": null,
+      "periodic_events": [
+        {
+          "id": "evt-zphq7b",
+          "description": "",
+          "rate_ms": 1000,
+          "template": {
+            "event_type": "margin",
+            "action": "UPDATE",
+            "data": {
+              "timestamp": "1782134310711",
+              "cfx_user_id": "{{.ajaib_id}}",
+              "asset": "USDT",
+              "total_position_value_label": "412960000",
+              "total_margin_label": "415871128",
+              "open_order_margin_label": "0",
+              "effective_leverage_label": "0.993",
+              "maintenance_margin_label": "8440832",
+              "return_amount_label": "304000000",
+              "return_percentage_label": "-2.43",
+              "available_margin_label": "407430096",
+              "wallet_balance_label": "111883728",
+              "margin_ratio_percentage_label": "2.03",
+              "withdrawable_margin_label": "103430096",
+              "safe_margin_ratio_percentage_label": "75",
+              "safe_margin_levels": [
+                "35",
+                "75"
+              ],
+              "in_use_margin_label": "196.722116",
+              "isolated_margin_label": "97.096018"
+            }
+          },
+          "randomizers": {
+            "action": {
+              "type": "static_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 0,
+              "static_val": "UPDATE"
+            },
+            "data.asset": {
+              "type": "static_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 0,
+              "static_val": "USDT"
+            },
+            "data.available_margin_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "data.cfx_user_id": {
+              "type": "template_var",
+              "min": 0,
+              "max": 0,
+              "percentage": 0,
+              "static_val": ""
+            },
+            "data.effective_leverage_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "data.in_use_margin_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "data.isolated_margin_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "data.maintenance_margin_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "data.margin_ratio_percentage_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "data.open_order_margin_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "data.return_amount_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "data.return_percentage_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "data.safe_margin_ratio_percentage_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "data.timestamp": {
+              "type": "timestamp",
+              "min": 0,
+              "max": 0,
+              "percentage": 0,
+              "static_val": ""
+            },
+            "data.total_margin_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "data.total_position_value_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "data.wallet_balance_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "data.withdrawable_margin_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "event_type": {
+              "type": "static_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 0,
+              "static_val": "margin"
+            }
+          }
+        }
+      ],
+      "enabled": true
+    },
+    "futures-market-trade": {
+      "id": "futures-market-trade",
+      "description": "Futures Market Trade",
+      "category": "gorilla",
+      "path": "/ws/coin-data/futures/market-trade",
+      "subscribe_requests": [
+        {
+          "description": "Subscribe to Price V3",
+          "sub_key": "{{.asset_id}}{{.quote_currency}}",
+          "request_template": "{\n  \"asset_id\": \"{{.asset_id}}\",\n  \"id\": {{.id}},\n  \"quote_currency\": \"{{.quote_currency}}\",\n  \"source\": \"COIN_DETAIL\",\n  \"stream_action\": \"SUBSCRIBE\",\n  \"stream_type\": \"PRICE\"\n}",
+          "response_template": {
+            "connection_id": "{{.connection_id}}",
+            "result": "{{.connection_id}} successfully subscribe /ws/coin-data/futures/market-trade with asset id {{.asset_id}} quote currency {{.quote_currency}}"
+          }
+        }
+      ],
+      "unsubscribe_requests": [
+        {
+          "description": "Unsubscribe from Price V3",
+          "sub_key": "{{.asset_id}}{{.quote_currency}}",
+          "request_template": "{\n  \"asset_id\": \"{{.asset_id}}\",\n  \"id\": {{.id}},\n  \"quote_currency\": \"{{.quote_currency}}\",\n  \"source\": \"COIN_DETAIL\",\n  \"stream_action\": \"UNSUBSCRIBE\",\n  \"stream_type\": \"PRICE\"\n}",
+          "response_template": {
+            "connection_id": "{{.connection_id}}",
+            "result": "{{.connection_id}} successfully unsubscribe /ws/coin-data/futures/market-trade with asset id {{.asset_id}} quote currency {{.quote_currency}}"
+          }
+        }
+      ],
+      "ping_request": {
+        "ping_message": "Ping",
+        "pong_message": "Pong",
+        "is_json": false
+      },
+      "periodic_events": [
+        {
+          "id": "evt-xnmgtf",
+          "description": "Futures Market Trade Update",
+          "rate_ms": 1000,
+          "template": {
+            "trades": [
+              {
+                "side": "BUY",
+                "symbol": "{{.asset_id}}_{{.quote_currency}}",
+                "price": 69025.5,
+                "size": 0.025,
+                "timestamp": 1689580456123,
+                "exchange_name": "Binance"
+              }
+            ],
+            "symbol": "{{.asset_id}}_{{.quote_currency}}"
+          },
+          "randomizers": {
+            "symbol": {
+              "type": "template_var",
+              "min": 0,
+              "max": 0,
+              "percentage": 0,
+              "static_val": ""
+            },
+            "trades": {
+              "type": "array_repeat",
+              "min": 10,
+              "max": 20,
+              "percentage": 0,
+              "static_val": ""
+            },
+            "trades.*.exchange_name": {
+              "type": "static_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 0,
+              "static_val": "Binance"
+            },
+            "trades.*.price": {
+              "type": "double",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "trades.*.side": {
+              "type": "static_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 0,
+              "static_val": "BUY,SELL"
+            },
+            "trades.*.size": {
+              "type": "double",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "trades.*.symbol": {
+              "type": "template_var",
+              "min": 0,
+              "max": 0,
+              "percentage": 0,
+              "static_val": ""
+            },
+            "trades.*.timestamp": {
+              "type": "timestamp",
+              "min": 0,
+              "max": 0,
+              "percentage": 0,
+              "static_val": ""
+            }
+          }
+        }
+      ],
+      "enabled": true
+    },
+    "order-book-v2": {
+      "id": "order-book-v2",
+      "description": "Order Book V2",
+      "category": "gorilla",
+      "path": "/ws/v2/coin-data/order-book",
+      "subscribe_requests": [
+        {
+          "description": "Subscribe to Price V3",
+          "sub_key": "{{.asset_id}}{{.quote_currency}}",
+          "request_template": "{\n  \"asset_id\": \"{{.asset_id}}\",\n  \"id\": {{.id}},\n  \"quote_currency\": \"{{.quote_currency}}\",\n  \"source\": \"COIN_DETAIL\",\n  \"stream_action\": \"SUBSCRIBE\",\n  \"stream_type\": \"PRICE\"\n}",
+          "response_template": {
+            "connection_id": "{{.connection_id}}",
+            "result": "{{.connection_id}} successfully subscribe /ws/v2/coin-data/price with asset id {{.asset_id}} quote currency {{.quote_currency}}"
+          }
+        }
+      ],
+      "unsubscribe_requests": [
+        {
+          "description": "Unsubscribe from Price V3",
+          "sub_key": "{{.asset_id}}{{.quote_currency}}",
+          "request_template": "{\n  \"asset_id\": \"{{.asset_id}}\",\n  \"id\": {{.id}},\n  \"quote_currency\": \"{{.quote_currency}}\",\n  \"source\": \"COIN_DETAIL\",\n  \"stream_action\": \"UNSUBSCRIBE\",\n  \"stream_type\": \"PRICE\"\n}",
+          "response_template": {
+            "connection_id": "{{.connection_id}}",
+            "result": "{{.connection_id}} successfully unsubscribe /ws/v2/coin-data/price with asset id {{.asset_id}} quote currency {{.quote_currency}}"
+          }
+        }
+      ],
+      "ping_request": {
+        "ping_message": "Ping",
+        "pong_message": "Pong",
+        "is_json": false
+      },
+      "periodic_events": [
+        {
+          "id": "evt-2zobhu",
+          "description": "Order Book Update",
+          "rate_ms": 1000,
+          "template": {
+            "asset_id": "{{.asset_id}}",
+            "quote_currency": "{{.quote_currency}}",
+            "timestamp": 1689580456123,
+            "asks": [
+              {
+                "quantity_label": "0,451234",
+                "price_label": "1.177.144",
+                "price": 1177144.45,
+                "quantity": 0.451234
+              }
+            ],
+            "bids": [
+              {
+                "quantity_label": "0,150000",
+                "price_label": "1.174.144",
+                "price": 1174144.45,
+                "quantity": 0.15
+              }
+            ],
+            "ask_qty_percentage": 61.5,
+            "bid_qty_percentage": 38.5,
+            "sum_qty": 2.1,
+            "p": 125,
+            "co": 129,
+            "pe": 1689580456247
+          },
+          "randomizers": {
+            "ask_qty_percentage": {
+              "type": "double",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "asks": {
+              "type": "array_repeat",
+              "min": 20,
+              "max": 30,
+              "percentage": 0,
+              "static_val": ""
+            },
+            "asks.*.price": {
+              "type": "double",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "asks.*.price_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "asks.*.quantity": {
+              "type": "double",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "asks.*.quantity_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "asset_id": {
+              "type": "template_var",
+              "min": 0,
+              "max": 0,
+              "percentage": 0,
+              "static_val": ""
+            },
+            "bid_qty_percentage": {
+              "type": "double",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "bids": {
+              "type": "array_repeat",
+              "min": 20,
+              "max": 30,
+              "percentage": 0,
+              "static_val": ""
+            },
+            "bids.*.price": {
+              "type": "double",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "bids.*.price_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "bids.*.quantity": {
+              "type": "double",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "bids.*.quantity_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "co": {
+              "type": "int",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "p": {
+              "type": "int",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "pe": {
+              "type": "int",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "quote_currency": {
+              "type": "template_var",
+              "min": 0,
+              "max": 0,
+              "percentage": 0,
+              "static_val": ""
+            },
+            "sum_qty": {
+              "type": "double",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "timestamp": {
+              "type": "timestamp",
+              "min": 0,
+              "max": 0,
+              "percentage": 0,
+              "static_val": ""
+            }
+          }
+        }
+      ],
+      "enabled": true
+    },
+    "order-book-v3": {
+      "id": "order-book-v3",
+      "description": "Order Book V3",
+      "category": "gorilla",
+      "path": "/ws/v3/coin-data/order-book",
+      "subscribe_requests": [
+        {
+          "description": "Subscribe to Price V3",
+          "sub_key": "{{.asset_id}}{{.quote_currency}}",
+          "request_template": "{\n  \"asset_id\": \"{{.asset_id}}\",\n  \"id\": {{.id}},\n  \"quote_currency\": \"{{.quote_currency}}\",\n  \"source\": \"COIN_DETAIL\",\n  \"stream_action\": \"SUBSCRIBE\",\n  \"stream_type\": \"PRICE\"\n}",
+          "response_template": {
+            "connection_id": "{{.connection_id}}",
+            "result": "{{.connection_id}} successfully subscribe /ws/v3/coin-data/order-book with asset id {{.asset_id}} quote currency {{.quote_currency}}"
+          }
+        }
+      ],
+      "unsubscribe_requests": [
+        {
+          "description": "Unsubscribe from Price V3",
+          "sub_key": "{{.asset_id}}{{.quote_currency}}",
+          "request_template": "{\n  \"asset_id\": \"{{.asset_id}}\",\n  \"id\": {{.id}},\n  \"quote_currency\": \"{{.quote_currency}}\",\n  \"source\": \"COIN_DETAIL\",\n  \"stream_action\": \"UNSUBSCRIBE\",\n  \"stream_type\": \"PRICE\"\n}",
+          "response_template": {
+            "connection_id": "{{.connection_id}}",
+            "result": "{{.connection_id}} successfully unsubscribe /ws/v3/coin-data/order-book with asset id {{.asset_id}} quote currency {{.quote_currency}}"
+          }
+        }
+      ],
+      "ping_request": {
+        "ping_message": "Ping",
+        "pong_message": "Pong",
+        "is_json": false
+      },
+      "periodic_events": [
+        {
+          "id": "evt-b6c8nw",
+          "description": "Order Book Update",
+          "rate_ms": 1000,
+          "template": {
+            "asset_id": "{{.asset_id}}",
+            "quote_currency": "{{.quote_currency}}",
+            "timestamp": 1689580456123,
+            "asks": [
+              {
+                "price_label": "1180644449",
+                "quantity": 0.05,
+                "quantity_label": "0.050"
+              }
+            ],
+            "bids": [
+              {
+                "price_label": "1155644449",
+                "quantity": 1.2,
+                "quantity_label": "1.200"
+              }
+            ],
+            "ask_qty_percentage": "60",
+            "bid_qty_percentage": "40",
+            "sum_qty": "205000"
+          },
+          "randomizers": {
+            "ask_qty_percentage": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "asks": {
+              "type": "array_repeat",
+              "min": 20,
+              "max": 30,
+              "percentage": 0,
+              "static_val": ""
+            },
+            "asks.*.price_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "asks.*.quantity": {
+              "type": "double",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "asks.*.quantity_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "asset_id": {
+              "type": "template_var",
+              "min": 0,
+              "max": 0,
+              "percentage": 0,
+              "static_val": ""
+            },
+            "bid_qty_percentage": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "bids": {
+              "type": "array_repeat",
+              "min": 20,
+              "max": 30,
+              "percentage": 0,
+              "static_val": ""
+            },
+            "bids.*.price_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "bids.*.quantity": {
+              "type": "double",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "bids.*.quantity_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "quote_currency": {
+              "type": "template_var",
+              "min": 0,
+              "max": 0,
+              "percentage": 0,
+              "static_val": ""
+            },
+            "sum_qty": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "timestamp": {
+              "type": "timestamp",
+              "min": 0,
+              "max": 0,
+              "percentage": 0,
+              "static_val": ""
+            }
+          }
+        }
+      ],
+      "enabled": true
+    },
+    "price-v2": {
+      "id": "price-v2",
+      "description": "Price V2 (Legacy)",
+      "category": "gorilla",
+      "path": "/ws/v2/coin-data/price",
+      "subscribe_requests": [
+        {
+          "description": "Subscribe to Price V2",
+          "sub_key": "{{.asset_id}}{{.quote_currency}}",
+          "request_template": "{\n  \"asset_id\": \"{{.asset_id}}\",\n  \"id\": {{.id}},\n  \"quote_currency\": \"{{.quote_currency}}\",\n  \"source\": \"COIN_DETAIL\",\n  \"stream_action\": \"SUBSCRIBE\",\n  \"stream_type\": \"PRICE\"\n}",
+          "response_template": {
+            "connection_id": "{{.connection_id}}",
+            "result": "{{.connection_id}} successfully subscribe /ws/v2/coin-data/price with asset id {{.asset_id}} quote currency {{.quote_currency}}"
+          }
+        }
+      ],
+      "unsubscribe_requests": [
+        {
+          "description": "Unsubscribe from Price V2",
+          "sub_key": "{{.asset_id}}{{.quote_currency}}",
+          "request_template": "{\n  \"asset_id\": \"{{.asset_id}}\",\n  \"id\": {{.id}},\n  \"quote_currency\": \"{{.quote_currency}}\",\n  \"source\": \"COIN_DETAIL\",\n  \"stream_action\": \"UNSUBSCRIBE\",\n  \"stream_type\": \"PRICE\"\n}",
+          "response_template": {
+            "connection_id": "{{.connection_id}}",
+            "result": "{{.connection_id}} successfully unsubscribe /ws/v2/coin-data/price with asset id {{.asset_id}} quote currency {{.quote_currency}}"
+          }
+        }
+      ],
+      "ping_request": {
+        "ping_message": "Ping",
+        "pong_message": "Pong",
+        "is_json": false
+      },
+      "periodic_events": [
+        {
+          "id": "evt-t6z5as",
+          "description": "Price Update",
+          "rate_ms": 1000,
+          "template": {
+            "asset_id": "{{.asset_id}}",
+            "quote_currency": "{{.quote_currency}}",
+            "timestamp": 1689580456123,
+            "price_label": "698,2924",
+            "price": 698.2924,
+            "price_in_idr_label": "698,2924",
+            "price_change_label": "10,123456",
+            "price_rate_change_label": "1,50",
+            "streamer_received_at": 1689580456123456,
+            "lp_timestamp": 1689580456123456,
+            "p": 0,
+            "co": 0,
+            "pe": 1689580456123
+          },
+          "randomizers": {
+            "asset_id": {
+              "type": "template_var",
+              "min": 0,
+              "max": 0,
+              "percentage": 0,
+              "static_val": ""
+            },
+            "co": {
+              "type": "int",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "lp_timestamp": {
+              "type": "timestamp",
+              "min": 0,
+              "max": 0,
+              "percentage": 0,
+              "static_val": ""
+            },
+            "p": {
+              "type": "int",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "pe": {
+              "type": "int",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "price": {
+              "type": "double",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "price_change_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "price_in_idr_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "price_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "price_rate_change_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "quote_currency": {
+              "type": "template_var",
+              "min": 0,
+              "max": 0,
+              "percentage": 0,
+              "static_val": ""
+            },
+            "streamer_received_at": {
+              "type": "timestamp",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "timestamp": {
+              "type": "timestamp",
+              "min": 0,
+              "max": 0,
+              "percentage": 0,
+              "static_val": ""
+            }
+          }
+        }
+      ],
+      "enabled": true
+    },
+    "price-v3": {
+      "id": "price-v3",
+      "description": "Price V3",
+      "category": "gorilla",
+      "path": "/ws/v3/coin-data/price",
+      "subscribe_requests": [
+        {
+          "description": "Subscribe to Price V3",
+          "sub_key": "{{.asset_id}}{{.quote_currency}}",
+          "request_template": "{\n  \"asset_id\": \"{{.asset_id}}\",\n  \"id\": {{.id}},\n  \"quote_currency\": \"{{.quote_currency}}\",\n  \"source\": \"{{.source}}\",\n  \"stream_action\": \"SUBSCRIBE\",\n  \"stream_type\": \"PRICE\"\n}",
+          "response_template": {
+            "connection_id": "{{.connection_id}}",
+            "result": "successfully subscribe"
+          }
+        }
+      ],
+      "unsubscribe_requests": [
+        {
+          "description": "Unsubscribe from Price V3",
+          "sub_key": "{{.asset_id}}{{.quote_currency}}",
+          "request_template": "{\n  \"asset_id\": \"{{.asset_id}}\",\n  \"id\": {{.id}},\n  \"quote_currency\": \"{{.quote_currency}}\",\n  \"source\": \"{{.source}}\",\n  \"stream_action\": \"UNSUBSCRIBE\",\n  \"stream_type\": \"PRICE\"\n}",
+          "response_template": {
+            "connection_id": "{{.connection_id}}",
+            "result": "{{.connection_id}} successfully unsubscribe /ws/v3/coin-data/price with asset id {{.asset_id}} quote currency {{.quote_currency}}"
+          }
+        }
+      ],
+      "ping_request": {
+        "ping_message": "Ping",
+        "pong_message": "Pong",
+        "is_json": false
+      },
+      "periodic_events": [
+        {
+          "id": "evt-24xt6r",
+          "description": "Price Update",
+          "rate_ms": 1000,
+          "template": {
+            "asset_id": "{{.asset_id}}",
+            "mark_price_label": "1175644549",
+            "price_change_label": "25.50",
+            "price_label": "1175644449",
+            "price_rate_change_label": "0.85",
+            "quote_currency": "{{.quote_currency}}",
+            "timestamp": 0
+          },
+          "randomizers": {
+            "asset_id": {
+              "type": "template_var",
+              "min": 0,
+              "max": 0,
+              "percentage": 0,
+              "static_val": ""
+            },
+            "mark_price_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "price_change_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "price_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "price_rate_change_label": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "quote_currency": {
+              "type": "template_var",
+              "min": 0,
+              "max": 0,
+              "percentage": 0,
+              "static_val": ""
+            },
+            "timestamp": {
+              "type": "timestamp",
+              "min": 0,
+              "max": 0,
+              "percentage": 0,
+              "static_val": ""
+            }
+          }
+        }
+      ],
+      "enabled": true
+    },
+    "watchlist": {
+      "id": "watchlist",
+      "description": "Watchlist V2",
+      "category": "gorilla",
+      "path": "/ws/v2/watchlist",
+      "subscribe_requests": [
+        {
+          "description": "Subscribe Watchlist",
+          "sub_key": "{{.asset_id}}{{.quote_currency}}",
+          "request_template": {
+            "action": "SUBSCRIBE",
+            "watchlist_group_id": 1,
+            "watchlist_items": [
+              {
+                "watchlist_item_type": "coin",
+                "watchlist_item_value": "{{.asset_id}}/{{.quote_currency}}"
+              }
+            ]
+          },
+          "response_template": {
+            "connection_id": "{{.connection_id}}",
+            "result": "{{.connection_id}} successfully subscribe /ws/v3/coin-data/price with asset id {{.asset_id}} quote currency {{.quote_currency}}"
+          }
+        }
+      ],
+      "unsubscribe_requests": [
+        {
+          "description": "Unsubscribe Watchlist",
+          "sub_key": "{{.asset_id}}{{.quote_currency}}",
+          "request_template": {
+            "action": "UNSUBSCRIBE",
+            "watchlist_group_id": 1,
+            "watchlist_items": [
+              {
+                "watchlist_item_type": "coin",
+                "watchlist_item_value": "{{.asset_id}}/{{.quote_currency}}"
+              }
+            ]
+          },
+          "response_template": {
+            "connection_id": "{{.connection_id}}",
+            "result": "{{.connection_id}} successfully unsubscribe /ws/v3/coin-data/price with asset id {{.asset_id}} quote currency {{.quote_currency}}"
+          }
+        }
+      ],
+      "ping_request": {
+        "ping_message": "Ping",
+        "pong_message": "Pong",
+        "is_json": false
+      },
+      "periodic_events": [
+        {
+          "id": "evt-q4vwl7",
+          "description": "Watchlist Update",
+          "rate_ms": 1000,
+          "template": [
+            {
+              "type": "coin",
+              "value": "{{.asset_id}}/{{.quote_currency}}",
+              "price": "1337954910",
+              "price_change": "-6689774",
+              "price_change_rate": "-0.50",
+              "scale": 0
+            }
+          ],
+          "randomizers": {
+            "*.price": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "*.price_change": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "*.price_change_rate": {
+              "type": "double_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "*.scale": {
+              "type": "int",
+              "min": 0,
+              "max": 0,
+              "percentage": 5,
+              "static_val": ""
+            },
+            "*.type": {
+              "type": "static_string",
+              "min": 0,
+              "max": 0,
+              "percentage": 0,
+              "static_val": "coin"
+            },
+            "*.value": {
+              "type": "template_var",
+              "min": 0,
+              "max": 0,
+              "percentage": 0,
+              "static_val": ""
+            },
+            "root": {
+              "type": "array_repeat",
+              "min": 1,
+              "max": 1,
+              "percentage": 0,
+              "static_val": ""
+            }
+          }
+        }
+      ],
+      "enabled": true
+    }
+  }
+}
