@@ -1,17 +1,17 @@
 # Websocket
-➜ Dashboard:   http://localhost:8080/dashboard
-➜ API Status:  http://localhost:8080/api/status
+- Dashboard:   http://localhost:8080/dashboard
+- API Status:  http://localhost:8080/api/status
 
-Centrifugo Endpoints:
-  ├─ Public:   ws://localhost:8080/connection/websocket
-  └─ Private:  ws://localhost:8080/private/connection/websocket
+## Centrifugo Endpoints:
+- Public:   ws://localhost:8080/connection/websocket
+- Private:  ws://localhost:8080/private/connection/websocket
 
-Gorilla Endpoints:
-  ├─ Price V3:  ws://localhost:8080/ws/v3/coin-data/price
-  ├─ Price V2:  ws://localhost:8080/ws/v2/coin-data/price
-  ├─ OrderBook: ws://localhost:8080/ws/v3/coin-data/order-book
-  ├─ Trades:    ws://localhost:8080/ws/coin-data/futures/market-trade
-  └─ Watchlist: ws://localhost:8080/ws/v2/watchlist
+## Gorilla (old websocket) Endpoints:
+- Price V3:  ws://localhost:8080/ws/v3/coin-data/price
+- Price V2:  ws://localhost:8080/ws/v2/coin-data/price
+- OrderBook: ws://localhost:8080/ws/v3/coin-data/order-book
+- Trades:    ws://localhost:8080/ws/coin-data/futures/market-trade
+- Watchlist: ws://localhost:8080/ws/v2/watchlist
 
 # Debug with wscat
 To debug, you can open connection with `wscat`, install it via npm or homebrew.
