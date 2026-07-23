@@ -1033,7 +1033,8 @@ function createRandomizerRow(field, rule) {
         <option value="double_string" ${rule.type === 'double_string' ? 'selected' : ''}>Double (string)</option>
         <option value="static_string" ${rule.type === 'static_string' ? 'selected' : ''}>Static Choices</option>
         <option value="random_string" ${rule.type === 'random_string' ? 'selected' : ''}>Random String</option>
-        <option value="timestamp" ${rule.type === 'timestamp' ? 'selected' : ''}>Timestamp (Now)</option>
+        <option value="timestamp" ${rule.type === 'timestamp' ? 'selected' : ''}>Timestamp (Int)</option>
+        <option value="timestamp_string" ${rule.type === 'timestamp_string' ? 'selected' : ''}>Timestamp (String)</option>
         <option value="array_repeat" ${rule.type === 'array_repeat' ? 'selected' : ''}>Array Repeat Count</option>
         <option value="template_var" ${rule.type === 'template_var' ? 'selected' : ''}>Template Variable</option>
       </select>
@@ -1071,7 +1072,7 @@ function onRndTypeChange(sel) {
   const type = sel.value;
   row.querySelector('[data-rnd-cfg="num"]').style.display = ['int','double','double_string','array_repeat'].includes(type) ? 'flex' : 'none';
   row.querySelector('[data-rnd-cfg="static"]').style.display = type === 'static_string' ? 'block' : 'none';
-  row.querySelector('[data-rnd-cfg="randstr"]').style.display = (type === 'random_string' || type === 'timestamp') ? 'block' : 'none';
+  row.querySelector('[data-rnd-cfg="randstr"]').style.display = (type === 'random_string' || type === 'timestamp' || type === 'timestamp_string') ? 'block' : 'none';
   
   const tmplCfg = row.querySelector('[data-rnd-cfg="tmpl"]');
   if (tmplCfg) tmplCfg.style.display = type === 'template_var' ? 'block' : 'none';
@@ -1121,7 +1122,7 @@ function generateRules(btn) {
 
         if (isTimestamp) {
           // If the field name implies it's a timestamp
-          paths[prefix] = { type: 'timestamp', base_val: o };
+          paths[prefix] = { type: typeof o === 'string' ? 'timestamp_string' : 'timestamp', base_val: o };
         } else if (typeof o === 'string' && o.includes('{{')) {
           // Identify it as a Template Variable
           paths[prefix] = { type: 'template_var', base_val: o };

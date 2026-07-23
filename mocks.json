@@ -107,7 +107,7 @@
       "ping_request": null,
       "periodic_events": [
         {
-          "id": "evt-zphq7b",
+          "id": "evt-y2d0bi",
           "description": "",
           "rate_ms": 1000,
           "template": {
@@ -230,7 +230,7 @@
               "static_val": ""
             },
             "data.timestamp": {
-              "type": "timestamp",
+              "type": "timestamp_string",
               "min": 0,
               "max": 0,
               "percentage": 0,

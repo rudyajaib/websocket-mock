@@ -249,6 +249,10 @@ func generateRandomizedValue(baseVal interface{}, rule RandomizerRule, stateKey 
 		return time.Now().UnixNano() / int64(time.Millisecond)
 	}
 
+	if rule.Type == "timestamp_string" {
+		return fmt.Sprintf("%d", time.Now().UnixNano()/int64(time.Millisecond))
+	}
+
 	// Try to extract a numeric base value from the JSON[cite: 4]
 	var baseNum float64
 	switch v := baseVal.(type) {
