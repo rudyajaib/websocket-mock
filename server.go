@@ -57,6 +57,18 @@ func NewMockServer() *MockServer {
 	}
 }
 
+// GetClientByID returns the ClientConn with the given ConnID, or nil.
+func (s *MockServer) GetClientByID(connID string) *ClientConn {
+	s.clientsMu.Lock()
+	defer s.clientsMu.Unlock()
+	for c := range s.clients {
+		if c.ConnID == connID {
+			return c
+		}
+	}
+	return nil
+}
+
 func (s *MockServer) AddClient(c *ClientConn) {
 	s.clientsMu.Lock()
 	defer s.clientsMu.Unlock()

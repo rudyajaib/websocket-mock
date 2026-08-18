@@ -39,6 +39,9 @@ In centrifugo, they will use build in ping pong. If client did not response any 
 ```
 wscat -c "ws://localhost:8080/private/connection/websocket?cf_ws_frame_ping_pong=true"
 ```
+```
+wscat -c "wss://edge-events-private.ajaib.tech/connection/websocket?cf_ws_frame_ping_pong=true"
+```
 
 ### Connect:
 ```
@@ -47,7 +50,7 @@ wscat -c "ws://localhost:8080/private/connection/websocket?cf_ws_frame_ping_pong
 
 ### Connect with token:
 ```
-{"id": 1, "connect": {"token": "eyJ0eXAiOiJBQ0NFU1MiLCJhbGciOiJFUzI1NiJ9.eyJhamFpYiI6IjEzMDAxNjAyMy5DX0lPUy5BQ0NFU1MiLCJwbGF0Zm9ybSI6IkNfSU9TIiwic2VjdXJpdHlfaWQiOiIiLCJkZXZpY2Vfc2lnbmF0dXJlIjoiM0Q3RDdFMTUtMjY0Ny00RjlFLTk4RkUtNzdDMEE1NDU3QjAzYXJtNjRpT1MiLCJhdWQiOiJodHRwczovL2FwcC5hamFpYi5jby5pZCIsImV4cCI6MTc4NDUzMDM4OCwianRpIjoiZjI4YTdlNTgtNWY1MC00NjQ4LWE3Y2MtNjQ2MzYyNGY0ZDBhIiwiaXNzIjoiaHR0cHM6Ly9hcHAuYWphaWIuY28uaWQiLCJpYXQiOjE3ODQ1Mjk0ODgsInN1YiI6IjEzMDAxNjAyMyIsInByaXZhdGVfdXNlcl9pZCI6IjkyNzMwNDlkLTE3NTgtNGNiOS05NDBkLTc2MTlmNWI4MjI1NiIsInNlc3Npb25faWQiOiI1ZjMzNTMxZi00N2NhLTRkNzYtOWNjZi1jOGViNDBlOWI2MmEifQ.ZTzUozUflDKfbrllQ7Bv7xohmTaMT9Nx7dWn69CPOxbOKbqfhitQtuYV6dPZn6f0HXM85ntXDmKOWMhLZtjnVQ"}}
+{"id": 1, "connect": {"token": "eyJ0eXAiOiJQSU4iLCJhbGciOiJFUzI1NiJ9.eyJhamFpYiI6IjEzMDAxNjAyMy5DX0lPUy5QSU4iLCJwbGF0Zm9ybSI6IkNfSU9TIiwiZGV2aWNlX3NpZ25hdHVyZSI6IjA2NjYyNUU4LTExODctNEYxRC05QkYzLTc0MTg0OEVBOTY3QWFybTY0aU9TLXN0YWdpbmciLCJhdWQiOiJodHRwczovL2FwcC5hamFpYi5jby5pZCIsImV4cCI6MTc4Njc4NDc2MywianRpIjoiOWFmMWNjOTctYjcyMy00YjFiLWExMzctNjI1MzA1ZjA5ZjQzIiwiaXNzIjoiaHR0cHM6Ly9hcHAuYWphaWIuY28uaWQiLCJpYXQiOjE3ODY2OTgzNjMsInN1YiI6IjEzMDAxNjAyMyIsInByaXZhdGVfdXNlcl9pZCI6IjkyNzMwNDlkLTE3NTgtNGNiOS05NDBkLTc2MTlmNWI4MjI1NiJ9.SyO7_aOfT8rTHcG27LcAiH_suoihiStFueGTyqS4BEIgroPdZKsv6MXXbEhwnkpirRybTOjVFR2zdnvpRno88Q"}}
 ```
 
 ### Subscribe:

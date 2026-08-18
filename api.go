@@ -24,6 +24,71 @@ func registerAPIRoutes() {
 	http.HandleFunc("/api/connections/", handleConnectionByKey)
 	http.HandleFunc("/api/command", handleCommand)
 	http.HandleFunc("/api/ws/status", handleWSStatus)
+	http.HandleFunc("/api/publish", handlePublish)
+}
+
+// ─── POST /api/publish ───
+type PublishRequest struct {
+	Target  string          `json:"target"`  // "gorilla" or "centrifugo"
+	ID      string          `json:"id"`      // Gorilla ConnID or Centrifugo channel name
+	Payload json.RawMessage `json:"payload"` // JSON payload to send
+}
+
+func handlePublish(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req PublishRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	if req.Target == "" || req.ID == "" || len(req.Payload) == 0 {
+		http.Error(w, "target, id, and payload are required", http.StatusBadRequest)
+		return
+	}
+
+	switch req.Target {
+	case "gorilla":
+		client := server.GetClientByID(req.ID)
+		if client == nil {
+			http.Error(w, "Gorilla connection not found", http.StatusNotFound)
+			return
+		}
+		client.writeMu.Lock()
+		defer client.writeMu.Unlock()
+		err := client.conn.WriteMessage(websocket.TextMessage, req.Payload)
+		if err != nil {
+			http.Error(w, "Failed to send message: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		log.Printf("[API] One‑time event sent to Gorilla connection %s", req.ID)
+
+	case "centrifugo":
+		_, err := cfManager.node.Publish(req.ID, req.Payload)
+		if err != nil {
+			http.Error(w, "Failed to publish: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		log.Printf("[API] One‑time event published to Centrifugo channel %s", req.ID)
+
+	default:
+		http.Error(w, "target must be 'gorilla' or 'centrifugo'", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "sent"})
 }
 
 // --- GET /api/status ---
